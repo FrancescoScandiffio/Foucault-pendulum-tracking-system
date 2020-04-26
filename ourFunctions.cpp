@@ -7,13 +7,15 @@
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
+
 using namespace cv;
 using namespace std;
+
 
 int oldMain(){
 
     //TODO uncomment the following lines on Raspberry to get the camera and set fps rate
-    VideoCapture video(0); // open the default camera
+   VideoCapture video(0); // open the default camera
     video.set(CAP_PROP_FPS, int(10));
 
     if(!video.isOpened()){
@@ -27,7 +29,7 @@ int oldMain(){
     cout << "Start grabbing" << endl
          << "Press any key to terminate" << endl;
 
-    for (;;) {
+    while(1) {
         // wait for a new frame from camera and store it into 'frame'
         video.read(frame);
         // check if we succeeded
