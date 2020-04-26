@@ -1,21 +1,27 @@
+//
+// Created by francis on 26/04/20.
+//
+
+#include "ourFunctions.h"
+
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-IplImage* GetThresholdedImage(IplImage* img)
+IplImage* thresholdGreen(IplImage* img)
 {
     // Convert the image into an HSV image
     IplImage* imgHSV = cvCreateImage(cvGetSize(img), 8, 3);
     cvCvtColor(img, imgHSV, CV_BGR2HSV);
     IplImage* imgThreshed = cvCreateImage(cvGetSize(img), 8, 1);
-    cvInRangeS(imgHSV, cvScalar(140, 139, 120), cvScalar(179, 255, 255), imgThreshed);
+    cvInRangeS(imgHSV, cvScalar(52, 68, 39), cvScalar(92, 163, 178), imgThreshed);
     cvReleaseImage(&imgHSV);
     return imgThreshed;
 }
 
-int main()
+int greenTracking()
 {
     // Initialize capturing live feed from the camera
     CvCapture* capture = 0;
@@ -43,7 +49,7 @@ int main()
             imgScribble = cvCreateImage(cvGetSize(frame), 8, 3);
         }
         // Holds the yellow thresholded image (yellow = white, rest = black)
-        IplImage* imgYellowThresh = GetThresholdedImage(frame);
+        IplImage* imgYellowThresh = thresholdGreen(frame);
 
         // Calculate the moments to estimate the position of the ball
         CvMoments *moments = (CvMoments*)malloc(sizeof(CvMoments));
