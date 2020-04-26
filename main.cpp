@@ -1,10 +1,9 @@
 
 #include "ourFunctions.h"
 
-int main(int, char**){
-    oldMain();
+int main2(int, char**){
+    //oldMain();
     //meanShiftTest();
-
     return 0;
 }
 

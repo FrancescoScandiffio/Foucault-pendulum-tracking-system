@@ -11,4 +11,6 @@ int oldMain();
 
 int meanShiftTest();
 
+void redTracing();
+
 #endif //FOUCAULT_OURFUNCTIONS_H
