@@ -48,7 +48,7 @@ int oldMain(){
 
 
 int meanShiftTest(){
-    cv::VideoCapture capture("test.avi");
+    cv::VideoCapture capture("test.mp4");
     if (!capture.isOpened()){
         //error in opening the video input
         cerr << "Unable to open file!" << endl;
