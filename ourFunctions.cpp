@@ -12,41 +12,6 @@ using namespace cv;
 using namespace std;
 
 
-int oldMain(){
-
-    //TODO uncomment the following lines on Raspberry to get the camera and set fps rate
-   VideoCapture video(0); // open the default camera
-    video.set(CAP_PROP_FPS, int(10));
-
-    if(!video.isOpened()){
-        // check if we succeeded
-        cerr << "ERROR! Unable to open camera\n";
-        return -1;
-    }
-
-    // Start grabbing frames
-    Mat frame;
-    cout << "Start grabbing" << endl
-         << "Press any key to terminate" << endl;
-
-    while(1) {
-        // wait for a new frame from camera and store it into 'frame'
-        video.read(frame);
-        // check if we succeeded
-        if (frame.empty()) {
-            cerr << "ERROR! blank frame grabbed\n";
-            break;
-        }
-        // show live and wait for a key with timeout long enough to show images
-        imshow("Live", frame);
-        if (waitKey(5) >= 0)
-            break;
-    }
-    // the camera will be de-initialized automatically in VideoCapture destructor
-    return 0;
-}
-
-
 int meanShiftTest(){
     cv::VideoCapture capture("test.mp4");
     if (!capture.isOpened()){
