@@ -1,7 +1,3 @@
-//
-// Created by francis on 26/04/20.
-//
-#include "ourFunctions.h"
 
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
@@ -11,6 +7,39 @@
 using namespace cv;
 using namespace std;
 
+int oldMain(){
+
+    //TODO uncomment the following lines on Raspberry to get the camera and set fps rate
+    VideoCapture video(0); // open the default camera
+    video.set(CAP_PROP_FPS, int(10));
+
+    if(!video.isOpened()){
+        // check if we succeeded
+        cerr << "ERROR! Unable to open camera\n";
+        return -1;
+    }
+
+    // Start grabbing frames
+    Mat frame;
+    cout << "Start grabbing" << endl
+         << "Press any key to terminate" << endl;
+
+    while(1) {
+        // wait for a new frame from camera and store it into 'frame'
+        video.read(frame);
+        // check if we succeeded
+        if (frame.empty()) {
+            cerr << "ERROR! blank frame grabbed\n";
+            break;
+        }
+        // show live and wait for a key with timeout long enough to show images
+        imshow("Live", frame);
+        if (waitKey(5) >= 0)
+            break;
+    }
+    // the camera will be de-initialized automatically in VideoCapture destructor
+    return 0;
+}
 
 int meanShiftTest(){
     cv::VideoCapture capture("test.mp4");
@@ -57,5 +86,73 @@ int meanShiftTest(){
             break;
     }
 
+    return 0;
+}
+
+int circleDetector(){
+
+    VideoCapture capture(0); // open the default camera
+    //setting fps rate of video to grab
+    capture.set(CAP_PROP_FPS, int(12));
+
+    if(!capture.isOpened()){
+        // check if we succeeded
+        cerr << "ERROR! Unable to open camera\n";
+        return -1;
+    }
+
+    Mat frame;
+    Mat cropped_frame;
+    Mat frame_gray;
+    while(true) {
+
+        // wait for a new frame from camera and store it into 'frame'
+        capture.read(frame);
+        // check if we succeeded
+        if (frame.empty()) {
+            cerr << "ERROR! blank frame grabbed\n";
+            break;
+        }
+
+        // getting frame size
+        Size s = frame.size();
+        int rows = s.height;
+        int cols = s.width;
+
+        // Cropping the frame to exclude unwanted area on video
+        // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
+        // top left corner of the box
+        frame(Rect(Point(40, 0), Point(cols-20,rows))).copyTo(cropped_frame);
+
+        // Convert it to gray
+        cvtColor( cropped_frame, frame_gray, COLOR_BGR2GRAY );
+
+        // Reduce the noise so we avoid false circle detection
+        GaussianBlur( frame_gray, frame_gray, Size(9, 9), 2, 2 );
+        vector<Vec3f> circles;
+
+        // Apply the Hough Transform to find the circles
+        HoughCircles( frame_gray, circles, HOUGH_GRADIENT, 1, frame_gray.rows/8, 200, 100, 0, 0 );
+
+        // Draw the circles detected
+        for( size_t i = 0; i < circles.size(); i++ ) {
+            Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+            int radius = cvRound(circles[i][2]);
+            // circle center
+            circle( cropped_frame, center, 3, Scalar(0,255,0), -1, 8, 0 );
+            // circle outline
+            circle( cropped_frame, center, radius, Scalar(0,0,255), 3, 8, 0 );
+        }
+        // Show your results
+        namedWindow("gray");
+        imshow("gray",frame_gray);
+
+        namedWindow( "Hough Circle Transform", WINDOW_AUTOSIZE );
+        imshow( "Hough Circle Transform", cropped_frame );
+
+        // show live and wait for a key with timeout long enough to show images
+        if (waitKey(5) >= 0)
+            break;
+    }
     return 0;
 }

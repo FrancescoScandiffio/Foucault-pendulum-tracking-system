@@ -1,8 +1,9 @@
-
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
+
+#include "ourFunctions.h"
 
 using namespace cv;
 using namespace std;
@@ -50,7 +51,7 @@ int colorTracking(string chosenColor){
         // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
         // top left corner of the box
         frame(Rect(Point(40, 0), Point(cols-20,rows))).copyTo(cropped_frame);
-        imshow("cropped_image", cropped_frame);
+        //imshow("cropped_image", cropped_frame);
 
         // Convert from BGR to HSV colorspace
         cvtColor(cropped_frame, frame_HSV, COLOR_BGR2HSV);
@@ -79,6 +80,9 @@ int colorTracking(string chosenColor){
         posX = moment10/area;
         posY = moment01/area;
 
+        // detecting the circles
+
+
         // Print it out for debugging purposes
         printf("position (%d,%d)", posX, posY);
 
@@ -94,13 +98,16 @@ int colorTracking(string chosenColor){
     return 0;
 }
 
+
+
 int main(int, char**){
     //oldMain();
     //meanShiftTest();
 
     //string color("green");
-    string color("red");
-    colorTracking(color);
+    //string color("red");
+    //colorTracking(color);
 
+    circleDetector();
     return 0;
 }

@@ -11,8 +11,6 @@ int oldMain();
 
 int meanShiftTest();
 
-int redTracking();
-
-int greenTracking();
+int circleDetector();
 
 #endif //FOUCAULT_OURFUNCTIONS_H
