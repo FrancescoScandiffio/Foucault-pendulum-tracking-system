@@ -98,8 +98,6 @@ int colorTracking(string chosenColor){
     return 0;
 }
 
-
-
 int main(int, char**){
     //oldMain();
     //meanShiftTest();

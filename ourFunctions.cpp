@@ -1,4 +1,3 @@
-
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
@@ -42,7 +41,7 @@ int oldMain(){
 }
 
 int meanShiftTest(){
-    cv::VideoCapture capture("test.mp4");
+    cv::VideoCapture capture("../videos/test.mp4");
     if (!capture.isOpened()){
         //error in opening the video input
         cerr << "Unable to open file!" << endl;
@@ -91,9 +90,19 @@ int meanShiftTest(){
 
 int circleDetector(){
 
-    VideoCapture capture(0); // open the default camera
+    ///If on Raspberry:
+    //VideoCapture capture(0); // open the default camera
     //setting fps rate of video to grab
-    capture.set(CAP_PROP_FPS, int(12));
+    //capture.set(CAP_PROP_FPS, int(12));
+
+    ///If working locally:
+    VideoCapture capture("../videos/prova.h264");
+
+    if(!capture.isOpened()){
+        // check if we succeeded
+        cerr << "ERROR! Unable to open camera\n";
+        return -1;
+    }
 
     if(!capture.isOpened()){
         // check if we succeeded
