@@ -9,4 +9,6 @@ int meanShiftTest();
 
 int circleDetector();
 
+int colorTracking(std::string chosenColor);
+
 #endif //FOUCAULT_OURFUNCTIONS_H

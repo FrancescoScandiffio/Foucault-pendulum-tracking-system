@@ -9,13 +9,16 @@ using namespace cv;
 using namespace std;
 
 
-int colorTracking(string chosenColor){
+int colorTrackingAndCircleDetection(string chosenColor){
 
-    VideoCapture capture(0); // open the default camera
-    //setting fps rate of video to grab
-    capture.set(CAP_PROP_FPS, int(12));
-    //capture.set(CAP_PROP_FRAME_WIDTH, 1296);
-    //capture.set(CAP_PROP_FRAME_HEIGHT, 972);
+    ///If on Raspberry:
+    // open the default camera
+    //VideoCapture capture(0);
+    // setting fps rate of video to grab
+    //capture.set(CAP_PROP_FPS, int(12));
+
+    ///If working locally:
+    VideoCapture capture("../videos/prova.h264");
 
     if(!capture.isOpened()){
         // check if we succeeded
@@ -80,14 +83,35 @@ int colorTracking(string chosenColor){
         posX = moment10/area;
         posY = moment01/area;
 
-        // detecting the circles
-
-
         // Print it out for debugging purposes
         printf("position (%d,%d)", posX, posY);
 
         imshow("thresh", frame_threshold);
         imshow("video", frame);
+
+        // Reduce the noise so we avoid false circle detection
+        GaussianBlur( frame_threshold, frame_threshold, Size(9, 9), 2, 2 );
+        vector<Vec3f> circles;
+
+        // Apply the Hough Transform to find the circles
+        HoughCircles( frame_threshold, circles, HOUGH_GRADIENT, 1, frame_threshold.rows/8, 200, 100, 0, 0 );
+
+        // Draw the circles detected
+        for( size_t i = 0; i < circles.size(); i++ ) {
+            Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+            int radius = cvRound(circles[i][2]);
+            // circle center
+            circle( cropped_frame, center, 3, Scalar(0,255,0), -1, 8, 0 );
+            // circle outline
+            circle( cropped_frame, center, radius, Scalar(0,0,255), 3, 8, 0 );
+        }
+        // Show your results
+        namedWindow("Modified threshold with gaussian filter");
+        imshow("Modified threshold with gaussian filter",frame_threshold);
+
+        namedWindow( "Hough Circle Transform", WINDOW_AUTOSIZE );
+        imshow( "Hough Circle Transform", cropped_frame );
+
 
         // show live and wait for a key with timeout long enough to show images
         if (waitKey(5) >= 0)
@@ -103,9 +127,9 @@ int main(int, char**){
     //meanShiftTest();
 
     //string color("green");
-    //string color("red");
+    string color("red");
     //colorTracking(color);
-
-    circleDetector();
+    //circleDetector();
+    colorTrackingAndCircleDetection(color);
     return 0;
 }
