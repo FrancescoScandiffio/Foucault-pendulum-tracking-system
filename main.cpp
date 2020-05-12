@@ -1,138 +1,96 @@
-#include <opencv2/core.hpp>
-#include <opencv2/videoio.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/opencv.hpp>
-#include <fstream>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include <iostream>
+#include <stdio.h>
 
-#include "ourFunctions.h"
-
-using namespace cv;
 using namespace std;
+using namespace cv;
 
+/// Global Variables
+Mat img; Mat templ; Mat result;
+String image_window = "Source Image";
+String result_window = "Result window";
 
-int colorTracking(string chosenColor){
+int match_method;
+int max_Trackbar = 5;
 
-    ///If on Raspberry:
-    // open the default camera
-    //VideoCapture capture(0);
+/// Function Headers
+void MatchingMethod( int, void* );
+
+/** @function main */
+int main()
+{
+    /// Load image and template
+  //  img = imread( "../images/pendoloFermo2.png", 1 );
+    templ = imread( "../images/template2.png", 1 );
+    VideoCapture capture(0);
     // setting fps rate of video to grab
-    //capture.set(CAP_PROP_FPS, int(12));
+    capture.set(CAP_PROP_FPS, int(12));
 
-    ///If working locally:
-    VideoCapture capture("../videos/output.mp4");
+    /// Create windows
+    namedWindow( image_window, WINDOW_AUTOSIZE );
+    namedWindow( result_window, WINDOW_AUTOSIZE );
 
-    if(!capture.isOpened()){
-        // check if we succeeded
-        cerr << "ERROR! Unable to open camera\n";
-        return -1;
-    }
+    /// Create Trackbar
+    String trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
+    createTrackbar( trackbar_label, image_window, &match_method, max_Trackbar, MatchingMethod );
 
-    // The two windows we'll be using
-    namedWindow("video");
-    namedWindow("thresh");
-
-    // Creating frame objects
-    Mat frame;
-    Mat cropped_frame;
-    Mat frame_HSV;
-    Mat frame_threshold;
-    vector<cv::Point> locations;     // locations of non-zero pixels (white pixels)
-
-    // Opening the file where will be saved the coordinates of white pixels on each frame
-    ofstream txt_file ("../positions.txt");
-    if (!txt_file.is_open())
-        cout << "Unable to open file positions.txt";
-
-    int i=0;
-    while(true){
+    while(true) {
 
         // wait for a new frame from camera and store it into 'frame'
-        capture.read(frame);
+        capture.read(img);
         // check if we succeeded
-        if (frame.empty()) {
+        if (img.empty()) {
             cerr << "ERROR! blank frame grabbed\n";
             break;
         }
+        MatchingMethod(0, 0);
+        imshow( result_window, result );
+        imshow( image_window, img );
 
-        // getting frame size
-        Size s = frame.size();
-        int rows = s.height;
-        int cols = s.width;
+        waitKey(1);
 
-        // Cropping the frame to exclude unwanted area on video
-        // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
-        // top left corner of the box
-        frame(Rect(Point(40, 0), Point(cols-20,rows))).copyTo(cropped_frame);
-        //imshow("cropped_image", cropped_frame);
-
-        // Convert from BGR to HSV colorspace
-        cvtColor(cropped_frame, frame_HSV, COLOR_BGR2HSV);
-
-        // Detect the object based on HSV Range Values
-        if(chosenColor.compare("green")){
-            inRange(frame_HSV, Scalar(140, 139, 120), Scalar(179, 255, 255), frame_threshold);
-        }
-        if(chosenColor.compare("red")){
-            inRange(frame_HSV, Scalar(52, 68, 39), Scalar(92, 163, 178), frame_threshold);
-        }
-
-        cv::findNonZero(frame_threshold, locations);
-
-        // access pixel coordinates
-        for (int count=0; count<locations.size(); count++){
-            Point pnt = locations[count];
-            // printf("Position of blank pixel on frame %d is (%d, %d)\n", i, pnt.x, pnt.y);
-
-            // saving the position back to the file
-            txt_file << "Frame "<< i << ", position ("<< pnt.x<<", "<<pnt.y<<")\n";
-        }
-
-
-        /*
-        // Calculate the moments to estimate the position of the ball
-        Moments moment;
-        moment=moments(frame_threshold);
-
-        // The actual moment values
-        double moment10 =moment.m10;
-        double moment01 =moment.m01;
-        double area = moment.m00;
-
-        // Holding the last and current ball positions
-        static int posX = 0;
-        static int posY = 0;
-
-        posX = moment10/area;
-        posY = moment01/area;
-
-        // Print it out for debugging purposes
-        printf("position (%d,%d)", posX, posY);
-        */
-
-
-        imshow("thresh", frame_threshold);
-        imshow("video", frame);
-
-        i++;
-        // show live and wait for a key with timeout long enough to show images
-        if (waitKey(5) >= 0)
-            break;
     }
 
-    // closing the txt file
-    txt_file.close();
-    // the camera will be de-initialized automatically in VideoCapture destructor
     return 0;
 }
 
-int main(int, char**){
-    //oldMain();
-    //meanShiftTest();
+/**
+ * @function MatchingMethod
+ * @brief Trackbar callback
+ */
+void MatchingMethod( int, void* )
+{
+    /// Source image to display
 
-    //string color("green");
-    string color("red");
-    colorTracking(color);
-    //circleDetector();
-    //colorTrackingAndCircleDetection(color);
-    return 0;
+
+    /// Create the result matrix
+    int result_cols =  img.cols - templ.cols + 1;
+    int result_rows = img.rows - templ.rows + 1;
+
+    result.create( result_rows, result_cols, CV_32FC1 );
+
+    /// Do the Matching and Normalize
+    matchTemplate( img, templ, result, match_method );
+    normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
+
+    /// Localizing the best match with minMaxLoc
+    double minVal; double maxVal; Point minLoc; Point maxLoc;
+    Point matchLoc;
+
+    minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
+
+    /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
+    if( match_method  == TM_SQDIFF || match_method == TM_SQDIFF_NORMED )
+    { matchLoc = minLoc; }
+    else
+    { matchLoc = maxLoc; }
+
+    /// Show me what you got
+    rectangle( img, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
+    rectangle( result, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
+
+
+
+    return;
 }
