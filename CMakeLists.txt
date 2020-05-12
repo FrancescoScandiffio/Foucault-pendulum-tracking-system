@@ -3,7 +3,7 @@ project(Foucault)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES main.cpp ourFunctions.cpp ourFunctions.h)
+set(SOURCE_FILES main.cpp ourFunctions.cpp ourFunctions.h )
 
 add_executable(Foucault ${SOURCE_FILES})
 
