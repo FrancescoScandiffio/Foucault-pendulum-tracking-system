@@ -55,8 +55,8 @@ int main() {
 
     // Opening the file where will be saved the coordinates of centers on each frame
     ofstream txt_file ("../positions.txt");
-    if (!txt_file.is_open())
-        cout << "Unable to open file positions.txt";
+    if (txt_file.is_open())
+        cout << "Opened file positions.txt";
 
     while(true) {
 
@@ -82,6 +82,7 @@ int main() {
 
         // saving to txt the positions found in MatchingMethod
         txt_file << "Frame "<< frame_number << ", position ("<< position_x<<", "<<position_y<<")\n";
+        txt_file.flush();
 
         //imshow( result_window, result );
         imshow( image_window, cropped_frame );
