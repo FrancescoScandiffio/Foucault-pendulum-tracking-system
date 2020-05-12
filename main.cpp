@@ -21,6 +21,9 @@ int match_method;
 int max_Trackbar = 5;
 int frame_number=0;
 
+int position_x=-1;
+int position_y=-1;
+
 /// Function Headers
 void MatchingMethod( int, void* );
 
@@ -76,8 +79,13 @@ int main() {
         frame(Rect(Point(40, 0), Point(cols-20,rows))).copyTo(cropped_frame);
 
         MatchingMethod(0, 0);
+
+        // saving to txt the positions found in MatchingMethod
+        txt_file << "Frame "<< frame_number << ", position ("<< position_x<<", "<<position_y<<")\n";
+
         //imshow( result_window, result );
         imshow( image_window, cropped_frame );
+
 
         frame_number++;
         // show live and wait for a key with timeout long enough to show images
@@ -127,7 +135,8 @@ void MatchingMethod( int, void* ) {
     // saving the center back to txt file
     position = Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows );
     printf("Position of center on frame %d is (%d, %d)\n", frame_number, position.x, position.y);
-    txt_file << "Frame "<< frame_number << ", position ("<< position.x<<", "<<position.y<<")\n";
+    position_x=position.x;
+    position_y=position.y;
 
     return;
 }
