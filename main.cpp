@@ -128,8 +128,8 @@ int main(int, char**){
 
     //string color("green");
     string color("red");
-    //colorTracking(color);
+    colorTracking(color);
     //circleDetector();
-    colorTrackingAndCircleDetection(color);
+    //colorTrackingAndCircleDetection(color);
     return 0;
 }
