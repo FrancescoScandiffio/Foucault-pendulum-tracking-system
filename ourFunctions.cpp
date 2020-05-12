@@ -167,7 +167,7 @@ int circleDetector(){
     return 0;
 }
 
-int colorTracking(string chosenColor){
+int colorTrackingAndCircleDetection(string chosenColor){
 
     ///If on Raspberry:
     // open the default camera
@@ -176,7 +176,7 @@ int colorTracking(string chosenColor){
     //capture.set(CAP_PROP_FPS, int(12));
 
     ///If working locally:
-    VideoCapture capture("../videos/output.mp4");
+    VideoCapture capture("../videos/prova.h264");
 
     if(!capture.isOpened()){
         // check if we succeeded
@@ -193,14 +193,6 @@ int colorTracking(string chosenColor){
     Mat cropped_frame;
     Mat frame_HSV;
     Mat frame_threshold;
-    vector<cv::Point> locations;     // locations of non-zero pixels (white pixels)
-
-    // Opening the file where will be saved the coordinates of white pixels on each frame
-    ofstream txt_file ("../positions.txt");
-    if (!txt_file.is_open())
-        cout << "Unable to open file positions.txt";
-
-    int i=0;
     while(true){
 
         // wait for a new frame from camera and store it into 'frame'
@@ -233,19 +225,6 @@ int colorTracking(string chosenColor){
             inRange(frame_HSV, Scalar(52, 68, 39), Scalar(92, 163, 178), frame_threshold);
         }
 
-        cv::findNonZero(frame_threshold, locations);
-
-        // access pixel coordinates
-        for (int count=0; count<locations.size(); count++){
-            Point pnt = locations[count];
-            printf("Position of blank pixel on frame %d is (%d, %d)\n", i, pnt.x, pnt.y);
-
-            // saving the position back to the file
-            txt_file << "Frame "<< i << ", position ("<< pnt.x<<", "<<pnt.y<<")\n";
-        }
-
-
-        /*
         // Calculate the moments to estimate the position of the ball
         Moments moment;
         moment=moments(frame_threshold);
@@ -264,20 +243,39 @@ int colorTracking(string chosenColor){
 
         // Print it out for debugging purposes
         printf("position (%d,%d)", posX, posY);
-        */
-
 
         imshow("thresh", frame_threshold);
         imshow("video", frame);
 
-        i++;
+        // Reduce the noise so we avoid false circle detection
+        GaussianBlur( frame_threshold, frame_threshold, Size(9, 9), 2, 2 );
+        vector<Vec3f> circles;
+
+        // Apply the Hough Transform to find the circles
+        HoughCircles( frame_threshold, circles, HOUGH_GRADIENT, 1, frame_threshold.rows/8, 200, 100, 0, 0 );
+
+        // Draw the circles detected
+        for( size_t i = 0; i < circles.size(); i++ ) {
+            Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+            int radius = cvRound(circles[i][2]);
+            // circle center
+            circle( cropped_frame, center, 3, Scalar(0,255,0), -1, 8, 0 );
+            // circle outline
+            circle( cropped_frame, center, radius, Scalar(0,0,255), 3, 8, 0 );
+        }
+        // Show your results
+        namedWindow("Modified threshold with gaussian filter");
+        imshow("Modified threshold with gaussian filter",frame_threshold);
+
+        namedWindow( "Hough Circle Transform", WINDOW_AUTOSIZE );
+        imshow( "Hough Circle Transform", cropped_frame );
+
+
         // show live and wait for a key with timeout long enough to show images
         if (waitKey(5) >= 0)
             break;
     }
 
-    // closing the txt file
-    txt_file.close();
     // the camera will be de-initialized automatically in VideoCapture destructor
     return 0;
 }
