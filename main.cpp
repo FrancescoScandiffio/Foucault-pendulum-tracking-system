@@ -1,11 +1,8 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
-#include <stdio.h>
 #include <fstream>
-#include <chrono>
-#include <string>
-#include <sstream>
+
 
 using namespace std;
 using namespace cv;
@@ -20,7 +17,7 @@ String image_window = "Source Image";
 String result_window = "Result window";
 ofstream txt_file;
 
-int match_method;
+int match_method=5;
 int max_Trackbar = 5;
 int frame_number=0;
 
@@ -88,7 +85,7 @@ int main() {
         // Cropping the frame to exclude unwanted area on video
         // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
         // top left corner of the box
-        frame(Rect(Point(40, 0), Point(cols-20,rows))).copyTo(cropped_frame);
+        frame(Rect(Point(30, 0), Point(cols-20,rows))).copyTo(cropped_frame);
 
         MatchingMethod(0, 0);
 
