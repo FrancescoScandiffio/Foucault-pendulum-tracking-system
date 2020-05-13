@@ -3,6 +3,9 @@
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
+#include <chrono>
+#include <string>
+#include <sstream>
 
 using namespace std;
 using namespace cv;
@@ -53,8 +56,17 @@ int main() {
     String trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
     createTrackbar( trackbar_label, image_window, &match_method, max_Trackbar, MatchingMethod );
 
-    // Opening the file where will be saved the coordinates of centers on each frame
-    ofstream txt_file ("../positions.txt");
+    /// Getting the current time
+    chrono::system_clock::time_point p = chrono::system_clock::now();
+    time_t t = chrono::system_clock::to_time_t(p);
+
+    /// Setting the right name for the file that will store the centers positions
+    std::ostringstream oss;
+    oss << "../pos_" << ctime(&t) << ".txt";
+    std::string file_name = oss.str();
+
+    /// Opening the file where will be saved the coordinates of centers on each frame
+    ofstream txt_file (file_name);
     if (txt_file.is_open())
         cout << "Opened file positions.txt";
 
@@ -80,8 +92,12 @@ int main() {
 
         MatchingMethod(0, 0);
 
+        /// Getting the current timestamp to save it to the file
+        p = chrono::system_clock::now();
+        t = chrono::system_clock::to_time_t(p);
+
         // saving to txt the positions found in MatchingMethod
-        txt_file << "Frame "<< frame_number << ", position ("<< position_x<<", "<<position_y<<")\n";
+        txt_file <<ctime(&t)<< ", frame "<< frame_number << ", position ("<< position_x<<", "<<position_y<<")\n";
         txt_file.flush();
 
         //imshow( result_window, result );
