@@ -2,7 +2,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
 #include <fstream>
-
+#include "ourFunctions.h"
 
 using namespace std;
 using namespace cv;
@@ -59,7 +59,7 @@ int main() {
 
     /// Setting the right name for the file that will store the centers positions
     std::ostringstream oss;
-    oss << "../pos_" << ctime(&t) << ".txt";
+    oss << "../" << ctime(&t) << ".txt";
     std::string file_name = oss.str();
 
     /// Opening the file where will be saved the coordinates of centers on each frame

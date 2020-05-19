@@ -410,10 +410,26 @@ int changeCoordinates(){
         cout << "Opened output file.txt\n";
 
     string line;
+    int count_frame=0;
+    string date;
+    string old_date="";
     while(getline(input_txt, line)) {
         size_t pos_first_bracket = line.find("(");
-        if (pos_first_bracket!=string::npos){
 
+        // if there is no ")" in this line, it means that the line contains the timestamp
+        if (pos_first_bracket==string::npos){
+            // extracting just the time
+            size_t pos_colon = line.find(":");
+            size_t pos_2020 = line.find("2020");
+            date = line.substr (pos_colon-2,pos_2020-pos_colon+1);
+            //cout<<"Date: "<<date<<endl;
+            if(old_date==date){
+                count_frame++;
+            } else
+                count_frame=0;
+            old_date=date;
+
+        } else{
             // extract the coordinates
             size_t pos_second_bracket = line.find(")");
             string coordinates = line.substr (pos_first_bracket+1, pos_second_bracket-pos_first_bracket-1);
@@ -430,7 +446,15 @@ int changeCoordinates(){
             int new_y=height-stoi(y);
             //cout<<"Old y: "<<y<<", New y: "<<new_y<<endl;
 
+            // find frame number
+            size_t pos_frame_number = line.find("frame ");
+            size_t pos_position = line.find("position");
+            string frame_number=line.substr (pos_frame_number,pos_position-2);
+            cout<<"Frame number: "<<frame_number<<endl;
 
+            // saving to txt
+            output_txt <<date<< "_"<< count_frame << " "<< frame_number<<" position ("<<x<<","<<new_y<<")\n";
+            output_txt.flush();
         }
     }
 
