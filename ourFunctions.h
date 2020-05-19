@@ -11,4 +11,6 @@ int circleDetector();
 
 int colorTracking(std::string chosenColor);
 
+int changeCoordinates();
+
 #endif //FOUCAULT_OURFUNCTIONS_H
