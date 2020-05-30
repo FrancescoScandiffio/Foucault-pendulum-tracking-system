@@ -53,19 +53,27 @@ int main() {
     String trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
     createTrackbar( trackbar_label, image_window, &match_method, max_Trackbar, MatchingMethod );
 
+
     /// Getting the current time
     chrono::system_clock::time_point p = chrono::system_clock::now();
     time_t t = chrono::system_clock::to_time_t(p);
+    auto duration = p.time_since_epoch();
+    auto converted_time = std::chrono::system_clock::to_time_t(p);
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
     /// Setting the right name for the file that will store the centers positions
     std::ostringstream oss;
     oss << "../" << ctime(&t) << ".txt";
     std::string file_name = oss.str();
 
+
     /// Opening the file where will be saved the coordinates of centers on each frame
     ofstream txt_file (file_name);
     if (txt_file.is_open())
         cout << "Opened file positions.txt";
+
+    // frame height of raspberry
+    int height_frame=480;
 
     while(true) {
 
@@ -85,27 +93,32 @@ int main() {
         // Cropping the frame to exclude unwanted area on video
         // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
         // top left corner of the box
-        frame(Rect(Point(30, 0), Point(cols-20,rows))).copyTo(cropped_frame);
+        frame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(cropped_frame);
 
         MatchingMethod(0, 0);
 
         /// Getting the current timestamp to save it to the file
         p = chrono::system_clock::now();
-        t = chrono::system_clock::to_time_t(p);
+        duration = p.time_since_epoch();
+        converted_time = std::chrono::system_clock::to_time_t(p);
+        millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+
+        // updating with proper value. At the moment y indicates the distance from the point to the top of the image
+        // now y is the distance from point to image bottom
+        int new_position_y = height_frame - position_y;
 
         // saving to txt the positions found in MatchingMethod
-        txt_file <<ctime(&t)<< ", frame "<< frame_number << ", position ("<< position_x<<", "<<position_y<<")\n";
+        txt_file <<std::put_time(std::localtime(&converted_time),"%X")<<":"<<millis%1000<<" frame "<<frame_number<<" position ("<< position_x<<", "<<new_position_y<<")\n";
         txt_file.flush();
 
         //imshow( result_window, result );
         imshow( image_window, cropped_frame );
 
-
         frame_number++;
         // show live and wait for a key with timeout long enough to show images
         waitKey(1);
     }
-
+    txt_file <<ctime(&t)<<endl;;
     // closing the txt file
     txt_file.close();
 
