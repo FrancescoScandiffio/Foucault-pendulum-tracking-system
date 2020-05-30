@@ -13,4 +13,6 @@ int colorTracking(std::string chosenColor);
 
 int changeCoordinates();
 
+int changeCoordinates2();
+
 #endif //FOUCAULT_OURFUNCTIONS_H
