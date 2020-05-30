@@ -463,3 +463,48 @@ int changeCoordinates(){
     output_txt.close();
     return 0;
 }
+
+int changeCoordinates2(){
+    // frame height of raspberry
+    int height=480;
+
+    ifstream input_txt ("../input.txt");
+    if (input_txt.is_open())
+        cout << "Opened input file.txt\n";
+
+    ofstream output_txt ("../output2.txt");
+    if (output_txt.is_open())
+        cout << "Opened output file.txt\n";
+
+    string line;
+    while(getline(input_txt, line)) {
+
+        // extract the coordinates
+        size_t pos_first_bracket = line.find("(");
+        size_t pos_second_bracket = line.find(")");
+        string coordinates = line.substr (pos_first_bracket+1, pos_second_bracket-pos_first_bracket-1);
+        //cout<<coordinates<<endl;
+
+        // detect position of the comma to separate x from y
+        size_t pos_comma = coordinates.find(",");
+        string x=coordinates.substr (0,pos_comma);
+        string y=coordinates.substr (pos_comma+2);
+        //cout<<"x: "<<x<<", y: "<<y<<endl;
+
+        // updating with proper value. At the moment y indicates the distance from the point to the top of the image
+        // now y is the distance from point to image bottom
+        int new_y=height-stoi(y);
+        //cout<<"Old y: "<<y<<", New y: "<<new_y<<endl;
+
+        string start_string = line.substr (0,pos_first_bracket);
+        // saving to txt
+        output_txt <<start_string<<"("<<x<<","<<new_y<<")\n";
+        output_txt.flush();
+
+    }
+
+    // closing the txt files
+    input_txt.close();
+    output_txt.close();
+    return 0;
+}
