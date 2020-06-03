@@ -15,4 +15,6 @@ int changeCoordinates();
 
 int changeCoordinates2();
 
+cv::Point2f rotate_and_translate(cv::Point2f point);
+
 #endif //FOUCAULT_OURFUNCTIONS_H

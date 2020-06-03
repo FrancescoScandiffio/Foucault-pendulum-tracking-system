@@ -7,6 +7,8 @@
 using namespace cv;
 using namespace std;
 
+cv::Point2f rotate_and_translate(cv::Point2f);
+
 int oldMain(){
 
     //TODO uncomment the following lines on Raspberry to get the camera and set fps rate
@@ -472,7 +474,7 @@ int changeCoordinates2(){
     if (input_txt.is_open())
         cout << "Opened input file.txt\n";
 
-    ofstream output_txt ("../output2.txt");
+    ofstream output_txt ("../output3.txt");
     if (output_txt.is_open())
         cout << "Opened output file.txt\n";
 
@@ -496,6 +498,9 @@ int changeCoordinates2(){
         int new_y=height-stoi(y);
         //cout<<"Old y: "<<y<<", New y: "<<new_y<<endl;
 
+        // considering the angle of the camera by rotating the view and computing the new coordinates
+        //cv::Point2f new_coordinates = rotate_and_translate(cv::Point2f(stoi(x), new_y));
+
         string start_string = line.substr (0,pos_first_bracket);
         // saving to txt
         output_txt <<start_string<<"("<<x<<","<<new_y<<")\n";
@@ -507,4 +512,49 @@ int changeCoordinates2(){
     input_txt.close();
     output_txt.close();
     return 0;
+}
+
+cv::Point2f rotate_and_translate(cv::Point2f old_point){
+
+    // computing the angle
+    float angle;
+    // depth is the wire's length in cm
+    float depth = 1734-111;
+
+    // z is the hypotenuse in cm, and we compute it by knowing the angle and the depth
+    float z;
+    float distance_from_wire = 53; //cm
+    z = float(sqrt(pow(distance_from_wire,2)+pow(depth,2)));
+    angle = asin(depth/z);
+
+    // creating the matrix of translation to point in camera
+    float T0_data[16] = { 1, 0, 0, old_point.x, 0, 1, 0, old_point.y, 0, 0, 1, z, 0, 0, 0, 1 };
+    cv::Mat T0_matrix = cv::Mat(4, 4, CV_32F, T0_data);
+
+    // creating the matrix of rotation
+    float Ry_data[16] = {cos(angle), 0, -sin(angle), 0, 0, 1, 0, 0, sin(angle), 0, cos(angle), 0, 0, 0, 0, 1};
+    cv::Mat Ry_matrix = cv::Mat(4, 4, CV_32F, Ry_data);
+
+    // creating the matrix that translate the point back to the origin
+    float T0_inv_data[16] = { 1, 0, 0, -old_point.x, 0, 1, 0, -old_point.y, 0, 0, 1, -z, 0, 0, 0, 1 };
+    cv::Mat T0_inv_matrix = cv::Mat(4, 4, CV_32F, T0_inv_data);
+
+    cv::Mat affine_transformation_matrix = T0_matrix * Ry_matrix * T0_inv_matrix;
+    cout<<"affine_transformation_matrix: "<<affine_transformation_matrix<<endl;
+
+    // vector of original coordinates
+    float original_coordinates_data[4] = { old_point.x, old_point.y, z, 1};
+    cv::Mat original_coordinates = cv::Mat(4, 1, CV_32F, original_coordinates_data);
+    cout<<"original_coordinates: "<<original_coordinates<<endl;
+
+    // new rotated point
+    cv::Mat new_point =  affine_transformation_matrix * original_coordinates;
+    cout<<"new_point: "<<new_point<<endl;
+
+    // we are only interested in the x and y coordinates
+    cout<<new_point.at<float>(cv::Point(0,0))<<endl;
+    cout<<new_point.at<float>(cv::Point(1,0))<<endl;
+    cv::Point2f new_coordinates(new_point.at<float>(cv::Point(0,0)), new_point.at<float>(cv::Point(0,1)));
+    return new_coordinates;
+
 }
