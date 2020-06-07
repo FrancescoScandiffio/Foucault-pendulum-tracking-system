@@ -476,7 +476,7 @@ int changeCoordinates2(){
     // camera center
     double camera_center = 310;
 
-    ifstream input_txt ("../input.txt");
+    ifstream input_txt ("../Fri May 29 14-02-27 2020.txt");
     if (input_txt.is_open())
         cout << "Opened input file.txt\n";
 
