@@ -470,6 +470,12 @@ int changeCoordinates2(){
     // frame height of raspberry
     int height=480;
 
+    // using sin of the angle (1.87036) in degrees
+    double sin_angle_degrees = 0.0326;
+
+    // camera center
+    double camera_center = 310;
+
     ifstream input_txt ("../input.txt");
     if (input_txt.is_open())
         cout << "Opened input file.txt\n";
@@ -496,14 +502,21 @@ int changeCoordinates2(){
         // updating with proper value. At the moment y indicates the distance from the point to the top of the image
         // now y is the distance from point to image bottom
         int new_y=height-stoi(y);
-        //cout<<"Old y: "<<y<<", New y: "<<new_y<<endl;
 
-        // considering the angle of the camera by rotating the view and computing the new coordinates
-        //cv::Point2f new_coordinates = rotate_and_translate(cv::Point2f(stoi(x), new_y));
+        /// correcting the parallax:
+
+        // translating the system to camera coordinates
+        double translated_x = stoi(x) - camera_center ;
+
+        // finding new x
+        double rotated_x = translated_x+ translated_x * sin_angle_degrees;
+        //cout<<new_x<<endl;
+
+        double new_x = rotated_x + camera_center;
 
         string start_string = line.substr (0,pos_first_bracket);
         // saving to txt
-        output_txt <<start_string<<"("<<x<<","<<new_y<<")\n";
+        output_txt <<start_string<<"("<<new_x<<","<<new_y<<")\n";
         output_txt.flush();
 
     }
@@ -521,11 +534,13 @@ cv::Point2f rotate_and_translate(cv::Point2f old_point){
     // depth is the wire's length in cm
     float depth = 1734-111;
 
-    // z is the hypotenuse in cm, and we compute it by knowing the angle and the depth
+    // z is the hypotenuse in cm, and we compute it by pythagoras theorem
     float z;
     float distance_from_wire = 53; //cm
     z = float(sqrt(pow(distance_from_wire,2)+pow(depth,2)));
-    angle = asin(depth/z);
+    // we find the angle from the hypotenuse and depth
+    angle = asin(distance_from_wire/z);
+    cout<<angle<<endl;
 
     // creating the matrix of translation to point in camera
     float T0_data[16] = { 1, 0, 0, old_point.x, 0, 1, 0, old_point.y, 0, 0, 1, z, 0, 0, 0, 1 };

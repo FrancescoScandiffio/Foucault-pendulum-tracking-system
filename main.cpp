@@ -31,6 +31,7 @@ void MatchingMethod( int, void* );
 /** @function main */
 int main() {
 
+
     /// Load image and template
     templ = imread( "../images/template2.png", 1 );
 
@@ -70,10 +71,16 @@ int main() {
     /// Opening the file where will be saved the coordinates of centers on each frame
     ofstream txt_file (file_name);
     if (txt_file.is_open())
-        cout << "Opened file positions.txt";
+        cout << "Opened file positions.txt\n";
 
     // frame height of raspberry
     int height_frame=480;
+
+    // using sin of the angle (1.87036) in degrees
+    double sin_angle_degrees = 0.0326;
+
+    // camera center
+    double camera_center = 310;
 
     while(true) {
 
@@ -107,8 +114,16 @@ int main() {
         // now y is the distance from point to image bottom
         int new_position_y = height_frame - position_y;
 
+        // translating the system to camera coordinates
+        double translated_x = position_x - camera_center ;
+
+        // finding new x
+        double rotated_x = translated_x + translated_x * sin_angle_degrees;
+
+        double new_position_x = rotated_x + camera_center;
+
         // saving to txt the positions found in MatchingMethod
-        txt_file <<std::put_time(std::localtime(&converted_time),"%X")<<":"<<millis%1000<<" frame "<<frame_number<<" position ("<< position_x<<", "<<new_position_y<<")\n";
+        txt_file <<std::put_time(std::localtime(&converted_time),"%X")<<":"<<millis%1000<<" frame "<<frame_number<<" position ("<< new_position_x<<", "<<new_position_y<<")\n";
         txt_file.flush();
 
         //imshow( result_window, result );
