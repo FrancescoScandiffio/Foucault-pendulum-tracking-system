@@ -504,7 +504,6 @@ int changeCoordinates2(){
         int new_y=height-stoi(y);
 
         /// correcting the parallax:
-
         // translating the system to camera coordinates
         double translated_x = stoi(x) - camera_center ;
 
@@ -518,12 +517,62 @@ int changeCoordinates2(){
         // saving to txt
         output_txt <<start_string<<"("<<new_x<<","<<new_y<<")\n";
         output_txt.flush();
-
     }
 
     // closing the txt files
     input_txt.close();
     output_txt.close();
+    return 0;
+}
+
+int drawPoints(){
+
+    ifstream input_txt ("../Fri May 29 14-02-27 2020.txt");
+    if (input_txt.is_open())
+        cout << "Opened input file.txt\n";
+
+    /// Create white empty image
+    Mat coord_image = Mat::zeros( 600, 600, CV_8UC3);
+    coord_image = cv::Scalar(255, 255, 255);
+
+    string line;
+    int iter=0;
+    Point old_pt;
+    Point new_pt;
+
+    while(getline(input_txt, line)) {
+        // extract the coordinates
+        size_t pos_first_bracket = line.find("(");
+        size_t pos_second_bracket = line.find(")");
+        string coordinates = line.substr(pos_first_bracket + 1, pos_second_bracket - pos_first_bracket - 1);
+
+        // detect position of the comma to separate x from y
+        size_t pos_comma = coordinates.find(",");
+        string x = coordinates.substr(0, pos_comma);
+        string y = coordinates.substr(pos_comma + 2);
+        //cout<<"x: "<<x<<", y: "<<y<<endl;
+
+        // taking the last two points extracted from the txt
+        if (iter==0){
+            old_pt = Point(stoi(x), stoi(y));
+            new_pt = old_pt;
+        }else if(iter>5000){
+            // discarding the first 5000 points in order to remove possible anomalies while starting the pendulum
+            old_pt = new_pt;
+            new_pt = Point(stoi(x), stoi(y));
+        }
+        // printing a line between the two points
+        cv::line(coord_image, old_pt, new_pt, cv::Scalar(0,0,0), 2);
+
+        iter++;
+    }
+
+    imshow("Coordinates:", coord_image);
+    int k = waitKey(0); // Wait for a keystroke in the window, press "s" to save the image
+    if(k == 's') {
+        imwrite("../outputs/coordinates.png", coord_image);
+    }
+
     return 0;
 }
 
