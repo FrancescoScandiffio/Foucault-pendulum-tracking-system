@@ -58,9 +58,10 @@ int main() {
     /// Getting the current time
     chrono::system_clock::time_point p = chrono::system_clock::now();
     time_t t = chrono::system_clock::to_time_t(p);
-    auto duration = p.time_since_epoch();
-    auto converted_time = std::chrono::system_clock::to_time_t(p);
-    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    auto t0 = Time now():
+    auto t1 = Time now();
+    typedef std::chrono::duration<double> elapsedDouble;
+    elapsedDouble ourElapsed=t1-t0;
 
     /// Setting the right name for the file that will store the centers positions
     std::ostringstream oss;
@@ -105,10 +106,9 @@ int main() {
         MatchingMethod(0, 0);
 
         /// Getting the current timestamp to save it to the file
-        p = chrono::system_clock::now();
-        duration = p.time_since_epoch();
-        converted_time = std::chrono::system_clock::to_time_t(p);
-        millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        
+        t1 = Time::now();
+        ourElapsed=t1-t0;
 
         // updating with proper value. At the moment y indicates the distance from the point to the top of the image
         // now y is the distance from point to image bottom
@@ -119,11 +119,10 @@ int main() {
 
         // finding new x
         double rotated_x = translated_x + translated_x * sin_angle_degrees;
-
         double new_position_x = rotated_x + camera_center;
 
         // saving to txt the positions found in MatchingMethod
-        txt_file <<std::put_time(std::localtime(&converted_time),"%X")<<":"<<millis%1000<<" frame "<<frame_number<<" position ("<< new_position_x<<", "<<new_position_y<<")\n";
+        txt_file <<"time: "<< ourElapsed.count() <<" position ("<< new_position_x<<", "<<new_position_y<<")\n";
         txt_file.flush();
 
         //imshow( result_window, result );
