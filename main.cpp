@@ -30,7 +30,8 @@ void MatchingMethod( int, void* );
 
 /** @function main */
 int main() {
-
+    typedef std::chrono::high_resolution_clock Time;
+    typedef std::chrono::duration<double> elapsedDouble;
 
     /// Load image and template
     templ = imread( "../images/template2.png", 1 );
@@ -58,9 +59,9 @@ int main() {
     /// Getting the current time
     chrono::system_clock::time_point p = chrono::system_clock::now();
     time_t t = chrono::system_clock::to_time_t(p);
-    auto t0 = Time now():
-    auto t1 = Time now();
-    typedef std::chrono::duration<double> elapsedDouble;
+    
+    auto t0 = Tim::now():
+    auto t1 = Time::now();
     elapsedDouble ourElapsed=t1-t0;
 
     /// Setting the right name for the file that will store the centers positions
