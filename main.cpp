@@ -60,7 +60,7 @@ int main() {
     chrono::system_clock::time_point p = chrono::system_clock::now();
     time_t t = chrono::system_clock::to_time_t(p);
     
-    auto t0 = Time::now():
+    auto t0 = Time::now();
     auto t1 = Time::now();
     elapsedDouble ourElapsed=t1-t0;
 
