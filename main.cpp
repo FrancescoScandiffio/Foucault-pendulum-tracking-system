@@ -2,7 +2,6 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
 #include <fstream>
-#include "ourFunctions.h"
 
 using namespace std;
 using namespace cv;
@@ -34,17 +33,14 @@ int main() {
     typedef std::chrono::duration<double> elapsedDouble;
 
     /// Load image and template
-    templ = imread( "../images/template2.png", 1 );
+    templ = imread( "template2.png", 1 );
 
     ///If on Raspberry:
     // open the default camera
-    //VideoCapture capture(0);
+    VideoCapture capture(0);
     // setting fps rate of video to grab
-    //capture.set(CAP_PROP_FPS, int(12));
+    capture.set(CAP_PROP_FPS, int(30));
 
-    ///If working locally:
-    //img = imread( "../images/pendoloFermo2.png", 1 );
-    VideoCapture capture("../videos/output.mp4");
 
 
     /// Create windows
@@ -60,9 +56,10 @@ int main() {
     chrono::system_clock::time_point p = chrono::system_clock::now();
     time_t t = chrono::system_clock::to_time_t(p);
     
-    auto t0 = Time::now():
+    auto t0 = Time::now();
     auto t1 = Time::now();
     elapsedDouble ourElapsed=t1-t0;
+    double start = false;
 
     /// Setting the right name for the file that will store the centers positions
     std::ostringstream oss;
@@ -73,7 +70,7 @@ int main() {
     /// Opening the file where will be saved the coordinates of centers on each frame
     ofstream txt_file (file_name);
     if (txt_file.is_open())
-        cout << "Opened file positions.txt\n";
+        cout << "Opened file "<< file_name<<"\n";
 
     // frame height of raspberry
     int height_frame=480;
@@ -109,8 +106,11 @@ int main() {
         /// Getting the current timestamp to save it to the file
         
         t1 = Time::now();
-        ourElapsed=t1-t0;
-
+        if(!start){
+			t0 = t1;
+			start=true;
+			}
+		ourElapsed = t1 - t0;
         // updating with proper value. At the moment y indicates the distance from the point to the top of the image
         // now y is the distance from point to image bottom
         int new_position_y = height_frame - position_y;
@@ -176,10 +176,8 @@ void MatchingMethod( int, void* ) {
 
     // saving the center back to txt file
     position = Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows );
-    printf("Position of center on frame %d is (%d, %d)\n", frame_number, position.x, position.y);
     position_x=position.x;
     position_y=position.y;
 
     return;
 }
-
