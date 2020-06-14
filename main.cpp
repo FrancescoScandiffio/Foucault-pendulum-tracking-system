@@ -1,7 +1,9 @@
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/opencv.hpp>
 #include <fstream>
+#include <thread>
+#include "utilityFunctions.h"
 
 using namespace std;
 using namespace cv;
@@ -13,8 +15,6 @@ Mat cropped_frame;
 Mat result;
 Point position;     // locations of recognized centers
 String image_window = "Source Image";
-String result_window = "Result window";
-ofstream txt_file;
 
 int match_method=5;
 int max_Trackbar = 5;
@@ -33,15 +33,16 @@ int main() {
     typedef std::chrono::duration<double> elapsedDouble;
 
     /// Load image and template
-    templ = imread( "template2.png", 1 );
+    templ = imread( "../images/template2.png", 1 );
 
     ///If on Raspberry:
     // open the default camera
-    VideoCapture capture(0);
+    //VideoCapture capture(0);
     // setting fps rate of video to grab
-    capture.set(CAP_PROP_FPS, int(30));
+    //capture.set(CAP_PROP_FPS, int(30));
 
-
+    ///If working locally:
+    VideoCapture capture("../videos/output.mp4");
 
     /// Create windows
     namedWindow( image_window );
@@ -66,7 +67,6 @@ int main() {
     oss << "../" << ctime(&t) << ".txt";
     std::string file_name = oss.str();
 
-
     /// Opening the file where will be saved the coordinates of centers on each frame
     ofstream txt_file (file_name);
     if (txt_file.is_open())
@@ -80,7 +80,7 @@ int main() {
 
     // camera center
     double camera_center = 310;
-
+    
     while(true) {
 
         // wait for a new frame from camera and store it into 'frame'
