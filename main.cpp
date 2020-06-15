@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <fstream>
 #include <thread>
+#include <tuple>
 #include "utilityFunctions.h"
 
 using namespace std;
@@ -20,11 +21,12 @@ int match_method=5;
 int max_Trackbar = 5;
 int frame_number=0;
 
-int position_x=-1;
-int position_y=-1;
+// frame height of raspberry
+int height_frame=480;
 
 /// Function Headers
-void MatchingMethod( int, void* );
+pair<double, double> MatchingMethod( int, void* );
+std::tuple<int, double, double, double> frameComputation(Mat, int, double);
 
 
 /** @function main */
@@ -50,8 +52,7 @@ int main() {
 
     /// Create Trackbar
     String trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
-    createTrackbar( trackbar_label, image_window, &match_method, max_Trackbar, MatchingMethod );
-
+    //createTrackbar( trackbar_label, image_window, &match_method, max_Trackbar, MatchingMethod );
 
     /// Getting the current time
     chrono::system_clock::time_point p = chrono::system_clock::now();
@@ -72,58 +73,41 @@ int main() {
     if (txt_file.is_open())
         cout << "Opened file "<< file_name<<"\n";
 
-    // frame height of raspberry
-    int height_frame=480;
+    /// This is how we handle the frames
+    // creating a vector that stores the frames to be computed
+    std::vector<Mat> frameBuffer;
+    double pos_x;
+    double pos_y;
+    double our_time;
+    int our_frame;
+    std::tuple<int, double, double, double> result;
 
-    // using sin of the angle (1.87036) in degrees
-    double sin_angle_degrees = 0.0326;
-
-    // camera center
-    double camera_center = 310;
-    
     while(true) {
 
         // wait for a new frame from camera and store it into 'frame'
         capture.read(frame);
-        // check if we succeeded
-        if (frame.empty()) {
+
+        /// Getting the current timestamp to save it to the file
+        t1 = Time::now();
+        if(!start){
+            t0 = t1;
+            start=true;
+        }
+        ourElapsed = t1 - t0;
+
+        try{
+            // the result is in the form (frame_number, ourElapsed, position_x, position_y)
+            result = frameComputation(frame, frame_number, ourElapsed.count());
+            // unpacking values in tuple
+            tie(our_frame, our_time, pos_x, pos_y) = result;
+
+        }catch(...) {
             cerr << "ERROR! blank frame grabbed\n";
             break;
         }
 
-        // getting frame size
-        Size s = frame.size();
-        int rows = s.height;
-        int cols = s.width;
-
-        // Cropping the frame to exclude unwanted area on video
-        // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
-        // top left corner of the box
-        frame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(cropped_frame);
-
-        MatchingMethod(0, 0);
-
-        /// Getting the current timestamp to save it to the file
-        
-        t1 = Time::now();
-        if(!start){
-			t0 = t1;
-			start=true;
-			}
-		ourElapsed = t1 - t0;
-        // updating with proper value. At the moment y indicates the distance from the point to the top of the image
-        // now y is the distance from point to image bottom
-        int new_position_y = height_frame - position_y;
-
-        // translating the system to camera coordinates
-        double translated_x = position_x - camera_center ;
-
-        // finding new x
-        double rotated_x = translated_x + translated_x * sin_angle_degrees;
-        double new_position_x = rotated_x + camera_center;
-
         // saving to txt the positions found in MatchingMethod
-        txt_file <<"time: "<< ourElapsed.count() <<" position ("<< new_position_x<<", "<<new_position_y<<")\n";
+        txt_file <<"time: "<< our_time <<" position ("<< pos_x<<", "<<pos_y<<")\n";
         txt_file.flush();
 
         //imshow( result_window, result );
@@ -145,7 +129,7 @@ int main() {
  * @function MatchingMethod
  * @brief Trackbar callback
  */
-void MatchingMethod( int, void* ) {
+pair<double, double> MatchingMethod( int, void* ) {
 
     /// Create the result matrix
     int result_cols =  cropped_frame.cols - templ.cols + 1;
@@ -176,8 +160,36 @@ void MatchingMethod( int, void* ) {
 
     // saving the center back to txt file
     position = Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows );
-    position_x=position.x;
-    position_y=position.y;
 
-    return;
+    pair<double, double> positions;
+    positions.first=position.x;
+    positions.second=position.y;
+
+    return positions;
+}
+
+tuple<int, double, double, double> frameComputation(Mat frame, int frame_number, double ourElapsed){
+    // check if we succeeded
+    if (frame.empty()) {
+        throw;
+    }
+
+    // getting frame size
+    Size s = frame.size();
+    int rows = s.height;
+    int cols = s.width;
+
+    // Cropping the frame to exclude unwanted area on video
+    // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
+    // top left corner of the box
+    frame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(cropped_frame);
+
+    pair<double, double> result = MatchingMethod(0, 0);
+
+    // updating with proper value. At the moment y indicates the distance from the point to the top of the image
+    // now y is the distance from point to image bottom
+    double new_position_y = height_frame - result.second;
+
+    // returning an array containing (frame_number, time, position_x, position_y)
+    return std::make_tuple(frame_number, ourElapsed, result.first, new_position_y);
 }
