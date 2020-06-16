@@ -19,14 +19,20 @@ String image_window = "Source Image";
 
 int match_method=5;
 int max_Trackbar = 5;
-int frame_number=0;
 
 // frame height of raspberry
 int height_frame=480;
 
+/// This is how we handle the frames, using two queues for the two threads
+std::queue<std::tuple<Mat, int, double>> frameQueue_A;
+std::queue<std::tuple<Mat, int, double>> frameQueue_B;
+
+std::queue<tuple<int, double, double, double>> resultQueue_A;
+std::queue<tuple<int, double, double, double>> resultQueue_B;
+
 /// Function Headers
 pair<double, double> MatchingMethod( int, void* );
-std::tuple<int, double, double, double> frameComputation(Mat, int, double);
+void frameComputation(const string& whichThread);
 
 
 /** @function main */
@@ -73,19 +79,35 @@ int main() {
     if (txt_file.is_open())
         cout << "Opened file "<< file_name<<"\n";
 
-    /// This is how we handle the frames
-    // creating a vector that stores the frames to be computed
-    std::vector<Mat> frameBuffer;
-    double pos_x;
-    double pos_y;
-    double our_time;
-    int our_frame;
-    std::tuple<int, double, double, double> result;
+    std::tuple<int, double, double, double> my_result;
+    std::tuple<Mat, int, double> frameInfo;
+
+    int frame_number=0;
+    int expectedFrameNumber=0;
+    bool alreadyExtracted_A = false;
+    bool alreadyExtracted_B = false;
+
+    int frameNumber_A=-1;
+    int frameNumber_B=-1;
+    double elapsed_A=-1.0;
+    double elapsed_B=-1.0;
+    double pos_X_A;
+    double pos_X_B;
+    double pos_Y_A;
+    double pos_Y_B;
+
+    // starting the two threads that handle the frame computation here
+    std::thread thread1 (frameComputation, "threadA");
+    std::thread thread2 (frameComputation, "threadB");
 
     while(true) {
 
         // wait for a new frame from camera and store it into 'frame'
         capture.read(frame);
+        if (frame.empty()) {
+            cerr << "ERROR! blank frame grabbed\n";
+            break;
+        }
 
         /// Getting the current timestamp to save it to the file
         t1 = Time::now();
@@ -95,23 +117,58 @@ int main() {
         }
         ourElapsed = t1 - t0;
 
-        try{
-            // the result is in the form (frame_number, ourElapsed, position_x, position_y)
-            result = frameComputation(frame, frame_number, ourElapsed.count());
-            // unpacking values in tuple
-            tie(our_frame, our_time, pos_x, pos_y) = result;
+        // preparing frame info to pass on the proper thread
+        frameInfo = std::make_tuple(frame, frame_number, ourElapsed.count());
 
-        }catch(...) {
-            cerr << "ERROR! blank frame grabbed\n";
-            break;
+        // equally distributing the work on the two queues
+        if (frame_number % 2 ==0){
+            frameQueue_A.push(frameInfo);
+        }else{
+            frameQueue_B.push(frameInfo);
         }
 
-        // saving to txt the positions found in MatchingMethod
-        txt_file <<"time: "<< our_time <<" position ("<< pos_x<<", "<<pos_y<<")\n";
-        txt_file.flush();
+        // extracting elements from the first queue if not already done in the previous iteration without writing the
+        // result to the txt file
+        if(!alreadyExtracted_A){
+            if(!resultQueue_A.empty()){
+                tie(frameNumber_A, elapsed_A, pos_X_A, pos_Y_A) = resultQueue_A.front();
+                resultQueue_A.pop();
+                // we extracted the element from the queue
+                alreadyExtracted_A=true;
+            }
+        }
+        // if the frame extracted from resultQueue_A is the frame that has to be written in the txt (and we know it by
+        // looking at the current frame number expected to be written)
+        if(expectedFrameNumber==frameNumber_A){
+            // saving to txt the positions found in MatchingMethod
+            txt_file <<"time: "<< elapsed_A <<" position ("<< pos_X_A<<", "<<pos_Y_A<<")\n";
+            txt_file.flush();
+
+            // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
+            expectedFrameNumber++;
+            alreadyExtracted_A=false;
+        }
+        // doing the same for the other queue and thread
+        if(!alreadyExtracted_B){
+            if(!resultQueue_B.empty()){
+                tie(frameNumber_B, elapsed_B, pos_X_B, pos_Y_B) = resultQueue_B.front();
+                resultQueue_B.pop();
+                // we extracted the element from the queue
+                alreadyExtracted_B=true;
+            }
+        }
+        if(expectedFrameNumber==frameNumber_B){
+            // saving to txt the positions found in MatchingMethod
+            txt_file <<"time: "<< elapsed_B <<" position ("<< pos_X_B<<", "<<pos_Y_B<<")\n";
+            txt_file.flush();
+
+            // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
+            expectedFrameNumber++;
+            alreadyExtracted_B=false;
+        }
 
         //imshow( result_window, result );
-        imshow( image_window, cropped_frame );
+        //imshow( image_window, cropped_frame );
 
         frame_number++;
         // show live and wait for a key with timeout long enough to show images
@@ -168,28 +225,53 @@ pair<double, double> MatchingMethod( int, void* ) {
     return positions;
 }
 
-tuple<int, double, double, double> frameComputation(Mat frame, int frame_number, double ourElapsed){
-    // check if we succeeded
-    if (frame.empty()) {
-        throw;
+void frameComputation(const string& whichThread){
+    Mat myFrame;
+    int myFrameNumber;
+    double ourElapsed;
+    std::queue<std::tuple<Mat, int, double>> *frameQueue_X;
+    std::queue<tuple<int, double, double, double>> *resultQueue_X;
+
+    // taking the reference of the proper queues
+    if(whichThread=="threadA"){
+        frameQueue_X = &frameQueue_A;
+        resultQueue_X = &resultQueue_A;
+    }else{
+        frameQueue_X=&frameQueue_B;
+        resultQueue_X=&resultQueue_B;
     }
 
-    // getting frame size
-    Size s = frame.size();
-    int rows = s.height;
-    int cols = s.width;
+    // iterating through the queue
+    while(true){
+        if(!frameQueue_X->empty()){
+            //extracting first element available from queue and unpacking the tuple content
+            tie(myFrame, myFrameNumber, ourElapsed) = frameQueue_X->front();
+            frameQueue_X->pop();
 
-    // Cropping the frame to exclude unwanted area on video
-    // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
-    // top left corner of the box
-    frame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(cropped_frame);
+            // check if we succeeded
+            if (myFrame.empty()) {
+                cerr << "ERROR! blank frame grabbed\n";
+                break;
+            }
 
-    pair<double, double> result = MatchingMethod(0, 0);
+            // getting frame size
+            Size s = myFrame.size();
+            int rows = s.height;
+            int cols = s.width;
 
-    // updating with proper value. At the moment y indicates the distance from the point to the top of the image
-    // now y is the distance from point to image bottom
-    double new_position_y = height_frame - result.second;
+            // Cropping the frame to exclude unwanted area on video
+            // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
+            // top left corner of the box
+            myFrame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(cropped_frame);
 
-    // returning an array containing (frame_number, time, position_x, position_y)
-    return std::make_tuple(frame_number, ourElapsed, result.first, new_position_y);
+            pair<double, double> myResult = MatchingMethod(0, 0);
+
+            // updating with proper value. At the moment y indicates the distance from the point to the top of the image
+            // now y is the distance from point to image bottom
+            double new_position_y = height_frame - myResult.second;
+
+            // creating the output tuple of the form (frame_number, time, position_x, position_y)
+            resultQueue_X->push(std::make_tuple(myFrameNumber, ourElapsed, myResult.first, new_position_y));
+        }
+    }
 }
