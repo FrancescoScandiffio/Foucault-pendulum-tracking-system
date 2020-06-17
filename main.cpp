@@ -12,10 +12,12 @@ using namespace cv;
 /// Global Variables
 Mat frame;
 Mat templ;
-Mat cropped_frame;
-Mat result;
-Point position;     // locations of recognized centers
+
+Point position_A;     // locations of recognized centers
+Point position_B;
 String image_window = "Source Image";
+Mat result_A;
+Mat result_B;
 
 int match_method=5;
 int max_Trackbar = 5;
@@ -27,11 +29,11 @@ int height_frame=480;
 std::queue<std::tuple<Mat, int, double>> frameQueue_A;
 std::queue<std::tuple<Mat, int, double>> frameQueue_B;
 
-std::queue<tuple<int, double, double, double>> resultQueue_A;
-std::queue<tuple<int, double, double, double>> resultQueue_B;
+std::queue<tuple<Mat, int, double, double, double>> resultQueue_A;
+std::queue<tuple<Mat, int, double, double, double>> resultQueue_B;
 
 /// Function Headers
-pair<double, double> MatchingMethod( int, void* );
+tuple<Mat, double, double> MatchingMethod( int, void*, const string&, Mat croppedFrame);
 void frameComputation(const string& whichThread);
 
 
@@ -79,7 +81,6 @@ int main() {
     if (txt_file.is_open())
         cout << "Opened file "<< file_name<<"\n";
 
-    std::tuple<int, double, double, double> my_result;
     std::tuple<Mat, int, double> frameInfo;
 
     int frame_number=0;
@@ -95,6 +96,8 @@ int main() {
     double pos_X_B;
     double pos_Y_A;
     double pos_Y_B;
+    Mat extracted_Mat_A;
+    Mat extracted_Mat_B;
 
     // starting the two threads that handle the frame computation here
     std::thread thread1 (frameComputation, "threadA");
@@ -131,7 +134,7 @@ int main() {
         // result to the txt file
         if(!alreadyExtracted_A){
             if(!resultQueue_A.empty()){
-                tie(frameNumber_A, elapsed_A, pos_X_A, pos_Y_A) = resultQueue_A.front();
+                tie(extracted_Mat_A, frameNumber_A, elapsed_A, pos_X_A, pos_Y_A) = resultQueue_A.front();
                 resultQueue_A.pop();
                 // we extracted the element from the queue
                 alreadyExtracted_A=true;
@@ -147,11 +150,14 @@ int main() {
             // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
             expectedFrameNumber++;
             alreadyExtracted_A=false;
+            imshow( image_window, extracted_Mat_A);
+            // show live and wait for a key with timeout long enough to show images
+            waitKey(1);
         }
         // doing the same for the other queue and thread
         if(!alreadyExtracted_B){
             if(!resultQueue_B.empty()){
-                tie(frameNumber_B, elapsed_B, pos_X_B, pos_Y_B) = resultQueue_B.front();
+                tie(extracted_Mat_B, frameNumber_B, elapsed_B, pos_X_B, pos_Y_B) = resultQueue_B.front();
                 resultQueue_B.pop();
                 // we extracted the element from the queue
                 alreadyExtracted_B=true;
@@ -165,14 +171,13 @@ int main() {
             // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
             expectedFrameNumber++;
             alreadyExtracted_B=false;
+            imshow( image_window, extracted_Mat_B);
+            // show live and wait for a key with timeout long enough to show images
+            waitKey(1);
         }
 
-        //imshow( result_window, result );
-        //imshow( image_window, cropped_frame );
-
         frame_number++;
-        // show live and wait for a key with timeout long enough to show images
-        waitKey(1);
+
     }
     txt_file <<ctime(&t)<<endl;;
     // closing the txt file
@@ -186,23 +191,32 @@ int main() {
  * @function MatchingMethod
  * @brief Trackbar callback
  */
-pair<double, double> MatchingMethod( int, void* ) {
+tuple<Mat, double, double> MatchingMethod( int, void*, const string& whichThread, Mat croppedFrame) {
+    Mat *result_X;
+    Point *position_X;
+    if(whichThread=="threadA"){
+        result_X = &result_A;
+        position_X = &position_A;
+    }else{
+        result_X = &result_B;
+        position_X = &position_B;
+    }
 
     /// Create the result matrix
-    int result_cols =  cropped_frame.cols - templ.cols + 1;
-    int result_rows = cropped_frame.rows - templ.rows + 1;
+    int result_cols =  croppedFrame.cols - templ.cols + 1;
+    int result_rows = croppedFrame.rows - templ.rows + 1;
 
-    result.create( result_rows, result_cols, CV_32FC1 );
+    result_X->create(result_rows, result_cols, CV_32FC1);
 
     /// Do the Matching and Normalize
-    matchTemplate( cropped_frame, templ, result, match_method );
-    normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
+    matchTemplate( croppedFrame, templ, *result_X, match_method );
+    normalize( *result_X, *result_X, 0, 1, NORM_MINMAX, -1, Mat() );
 
     /// Localizing the best match with minMaxLoc
     double minVal; double maxVal; Point minLoc; Point maxLoc;
     Point matchLoc;
 
-    minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
+    minMaxLoc( *result_X, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
 
     /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
     if( match_method  == TM_SQDIFF || match_method == TM_SQDIFF_NORMED ) {
@@ -212,25 +226,24 @@ pair<double, double> MatchingMethod( int, void* ) {
     }
 
     /// Show me what you got
-    rectangle( cropped_frame, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
-    rectangle( result, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
+    rectangle( croppedFrame, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
+    rectangle( *result_X, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
 
     // saving the center back to txt file
-    position = Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows );
+    *position_X = Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows );
 
-    pair<double, double> positions;
-    positions.first=position.x;
-    positions.second=position.y;
-
-    return positions;
+    return std::make_tuple(croppedFrame, position_X->x, position_X->y);
 }
 
 void frameComputation(const string& whichThread){
     Mat myFrame;
+    Mat myCroppedFrame;
     int myFrameNumber;
     double ourElapsed;
     std::queue<std::tuple<Mat, int, double>> *frameQueue_X;
-    std::queue<tuple<int, double, double, double>> *resultQueue_X;
+    std::queue<tuple<Mat, int, double, double, double>> *resultQueue_X;
+    double position_X;
+    double position_Y;
 
     // taking the reference of the proper queues
     if(whichThread=="threadA"){
@@ -262,16 +275,17 @@ void frameComputation(const string& whichThread){
             // Cropping the frame to exclude unwanted area on video
             // The area of interest is of the form Rect(Point(x, y), Point(x,y)) in which the first point indicates the
             // top left corner of the box
-            myFrame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(cropped_frame);
+            myFrame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(myCroppedFrame);
 
-            pair<double, double> myResult = MatchingMethod(0, 0);
+            tuple<Mat, double, double> myResult = MatchingMethod(0, 0, whichThread, myCroppedFrame);
+            tie(myCroppedFrame, position_X, position_Y) = myResult;
 
             // updating with proper value. At the moment y indicates the distance from the point to the top of the image
             // now y is the distance from point to image bottom
-            double new_position_y = height_frame - myResult.second;
+            double new_position_y = height_frame - position_Y;
 
-            // creating the output tuple of the form (frame_number, time, position_x, position_y)
-            resultQueue_X->push(std::make_tuple(myFrameNumber, ourElapsed, myResult.first, new_position_y));
+            // creating the output tuple of the form (cropped_frame, frame_number, time, position_x, position_y)
+            resultQueue_X->push(std::make_tuple(myCroppedFrame, myFrameNumber, ourElapsed, position_X, new_position_y));
         }
     }
 }
