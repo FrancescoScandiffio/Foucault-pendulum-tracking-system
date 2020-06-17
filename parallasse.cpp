@@ -1,0 +1,196 @@
+//
+// Created by francis on 12/06/20.
+//
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/opencv.hpp>
+#include <fstream>
+#include <bits/stdc++.h>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include <iostream>
+#include <thread>
+#include <zconf.h>
+#include "ourFunctions.h"
+
+using namespace cv;
+using namespace std;
+
+
+int match_method=5;
+int max_Trackbar = 5;
+int frame_number=0;
+
+int position_x=-1;
+int position_y=-1;
+
+void MatchingMethod( int, void* );
+Mat coord_image = Mat::zeros( 7000, 1200, CV_8UC3);
+
+void draw() {
+    while (true) {
+        imshow("Coordinates:", coord_image);
+        int k = waitKey(1); // Wait for a keystroke in the window, press "s" to save the image
+    }
+}
+
+
+/** @function main */
+void disegnaParallasse() {
+
+    changeCoordinates3();
+    ifstream input_txt ("../output3.txt");
+    if (input_txt.is_open())
+        cout << "Opened input file.txt\n";
+
+    /// Create white empty image
+    coord_image = cv::Scalar(255, 255, 255);
+
+    string line;
+    int iter=0;
+    Point new_pt;
+
+    std::thread first(draw);
+    first.detach();
+
+    while(getline(input_txt, line) && iter < 50000) {
+        // extract the coordinates
+        size_t pos_first_bracket = line.find("(");
+        size_t pos_second_bracket = line.find(")");
+        string coordinates = line.substr(pos_first_bracket + 1, pos_second_bracket - pos_first_bracket - 1);
+
+        // detect position of the comma to separate x from y
+        size_t pos_comma = coordinates.find(",");
+        string x = coordinates.substr(0, pos_comma);
+        string y = coordinates.substr(pos_comma + 1);
+        //cout<<"x: "<<stod(x)<<", y: "<<stod(y)<<endl;
+
+        // taking the last two points extracted from the txt
+
+        new_pt = Point(stod(x), stod(y));
+
+        // printing a line between the two points
+        cv::line(coord_image, new_pt, new_pt, cv::Scalar(0,0,0), 2);
+        unsigned int t = 50;
+        usleep(t);
+        iter++;
+    }
+    sleep(100);
+    return;
+}
+
+// C style struct for a 3D point
+struct Triple{
+    double x;
+    double y;
+    double z;
+};
+
+/*
+3D line defined by a direction vector and a point of the line
+parametric equations can be computed as
+x = point.x + vector.x *t
+y = point.y + vector.y *t
+z = point.z + vector.z *t
+ */
+struct vectorLine{
+    Triple point;
+    Triple vector;
+};
+
+//make a line given two points
+vectorLine makeLine(Triple pointA, Triple pointB){
+    Triple point = pointA;
+    Triple vector = {pointB.x-pointA.x, pointB.y - pointA.y, pointB.z - pointA.z};
+    return {point,vector};
+}
+
+//3D plane defined by its normal vector and the deviation value
+// ax + by + cz + d
+struct Plane{
+    Triple vector;
+    double d;
+};
+
+//get the plane which contains the pointA and is perpendicular to the given line
+Plane getPerpendicularPlane(vectorLine line, Triple pointA){
+    Triple vector = line.vector;
+    double d = - vector.x * pointA.x - vector.y * pointA.y - vector.z * pointA.z;
+
+    return {vector,d};
+}
+
+Triple getPlaneLineIntersection(Plane plane, vectorLine line){
+    Triple point = line.point;
+    Triple vector = line.vector;
+    Triple planeVector = plane.vector;
+    double t = -(planeVector.x * point.x + planeVector.y * point.y + planeVector.z * point.z + plane.d)
+            / (planeVector.x * vector.x + planeVector.y * vector.y + planeVector.z * vector.z);
+
+    return {point.x + vector.x*t,point.y + vector.y*t, point.z + vector.z*t };
+}
+
+int changeCoordinates3(){
+    //point: x,y,z where z is real-life height. The origin of the reference system is the bottom-left corner of the black
+    //plate on the floor
+    double pixelCm = 0.12; //pixel length in cm
+    Triple cameraPoint = {25.3, 32.0, 176.5}; // real-life camera position (cm)
+    Triple pendulumPoint = {30.6,32.0, 14.2};// real-life pendulum position (cm)
+    vectorLine focusLine = makeLine(cameraPoint,pendulumPoint);
+    Plane focusPlane = getPerpendicularPlane(focusLine, pendulumPoint);
+
+
+    //TEST
+    Triple coordinate1 = {256.08, 33.68, 0.0};
+    vectorLine test1 = makeLine(cameraPoint,coordinate1);
+    Triple intersectionTest = getPlaneLineIntersection(focusPlane, test1);
+
+    std::cout<<intersectionTest.x<<" "<<intersectionTest.y<<" "<<intersectionTest.z<<" "<<endl;
+
+
+    // frame height of raspberry
+    double height=480.0;
+
+
+    ifstream input_txt ("../Fri May 29 14-02-27 2020.txt");
+    if (input_txt.is_open())
+        cout << "Opened input file.txt\n";
+
+    ofstream output_txt ("../output3.txt");
+    if (output_txt.is_open())
+        cout << "Opened output file.txt\n";
+
+    string line;
+    while(getline(input_txt, line)) {
+
+        // extract the coordinates
+        size_t pos_first_bracket = line.find("(");
+        size_t pos_second_bracket = line.find(")");
+        string coordinates = line.substr (pos_first_bracket+1, pos_second_bracket-pos_first_bracket-1);
+        //cout<<coordinates<<endl;
+
+        // detect position of the comma to separate x from y
+        size_t pos_comma = coordinates.find(",");
+        string x=coordinates.substr (0,pos_comma);
+        string y=coordinates.substr (pos_comma+2);
+        //cout<<"x: "<<x<<", y: "<<y<<endl;
+
+
+        //cm coordinates
+        double oldX = stoi(x) * pixelCm;
+        double oldY = (height - stoi(y)) * pixelCm ;
+        Triple coordinate = {oldX, oldY, 0.0};
+        vectorLine pointLine = makeLine(cameraPoint,coordinate);
+        Triple intersection = getPlaneLineIntersection(focusPlane, pointLine);
+
+        string start_string = line.substr (0,pos_first_bracket);
+
+        output_txt <<start_string<<"("<<intersection.x/pixelCm<<","<<intersection.y/pixelCm<<")\n";
+        output_txt.flush();
+    }
+
+    // closing the txt files
+    input_txt.close();
+    output_txt.close();
+    return 0;
+}
