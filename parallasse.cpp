@@ -55,19 +55,15 @@ void disegnaParallasse() {
 
     while(getline(input_txt, line) && iter < 50000) {
         // extract the coordinates
-        size_t pos_first_bracket = line.find("(");
-        size_t pos_second_bracket = line.find(")");
-        string coordinates = line.substr(pos_first_bracket + 1, pos_second_bracket - pos_first_bracket - 1);
+        int lBracket = line.find("(");
+        int rBracket = line.find(")");
+        int comma = line.find(",");
 
-        // detect position of the comma to separate x from y
-        size_t pos_comma = coordinates.find(",");
-        string x = coordinates.substr(0, pos_comma);
-        string y = coordinates.substr(pos_comma + 1);
-        //cout<<"x: "<<stod(x)<<", y: "<<stod(y)<<endl;
+        string x = line.substr(lBracket+1, comma-lBracket);
+        string y = line.substr(comma+1, rBracket-comma-1);
 
-        // taking the last two points extracted from the txt
 
-        new_pt = Point(stod(x), stod(y));
+       new_pt = Point(stod(x), stod(y));
 
         // printing a line between the two points
         cv::line(coord_image, new_pt, new_pt, cv::Scalar(0,0,0), 2);
@@ -133,9 +129,9 @@ Triple getPlaneLineIntersection(Plane plane, vectorLine line){
 int changeCoordinates3(){
     //point: x,y,z where z is real-life height. The origin of the reference system is the bottom-left corner of the black
     //plate on the floor
-    double pixelCm = 0.12; //pixel length in cm
-    Triple cameraPoint = {25.3, 32.0, 176.5}; // real-life camera position (cm)
-    Triple pendulumPoint = {30.6,32.0, 14.2};// real-life pendulum position (cm)
+    double pixelCm = 1; //pixel length in cm
+    Triple cameraPoint = {25.3, 40, 176.5}; // real-life camera position (cm)
+    Triple pendulumPoint = {30.6,32, 14.2};// real-life pendulum position (cm)
     vectorLine focusLine = makeLine(cameraPoint,pendulumPoint);
     Plane focusPlane = getPerpendicularPlane(focusLine, pendulumPoint);
 
