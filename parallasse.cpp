@@ -12,6 +12,9 @@
 #include <thread>
 #include <zconf.h>
 #include "ourFunctions.h"
+#include <algorithm>
+#include <iostream>
+#include <cctype>
 
 using namespace cv;
 using namespace std;
@@ -59,8 +62,10 @@ void disegnaParallasse() {
         int rBracket = line.find(")");
         int comma = line.find(",");
 
-        string x = line.substr(lBracket+1, comma-lBracket);
+        string x = line.substr(lBracket+1, comma-lBracket-1);
         string y = line.substr(comma+1, rBracket-comma-1);
+        x.erase(remove_if(x.begin(), x.end(), ::isspace),x.end());
+        y.erase(remove_if(y.begin(), y.end(), ::isspace),y.end());
 
 
        new_pt = Point(stod(x), stod(y));
@@ -130,7 +135,7 @@ int changeCoordinates3(){
     //point: x,y,z where z is real-life height. The origin of the reference system is the bottom-left corner of the black
     //plate on the floor
     double pixelCm = 1; //pixel length in cm
-    Triple cameraPoint = {25.3, 40, 176.5}; // real-life camera position (cm)
+    Triple cameraPoint = {25.3, 35, 176.5}; // real-life camera position (cm)
     Triple pendulumPoint = {30.6,32, 14.2};// real-life pendulum position (cm)
     vectorLine focusLine = makeLine(cameraPoint,pendulumPoint);
     Plane focusPlane = getPerpendicularPlane(focusLine, pendulumPoint);
@@ -160,16 +165,15 @@ int changeCoordinates3(){
     while(getline(input_txt, line)) {
 
         // extract the coordinates
-        size_t pos_first_bracket = line.find("(");
-        size_t pos_second_bracket = line.find(")");
-        string coordinates = line.substr (pos_first_bracket+1, pos_second_bracket-pos_first_bracket-1);
-        //cout<<coordinates<<endl;
+        int lBracket = line.find("(");
+        int rBracket = line.find(")");
+        int comma = line.find(",");
 
-        // detect position of the comma to separate x from y
-        size_t pos_comma = coordinates.find(",");
-        string x=coordinates.substr (0,pos_comma);
-        string y=coordinates.substr (pos_comma+2);
-        //cout<<"x: "<<x<<", y: "<<y<<endl;
+        string x = line.substr(lBracket+1, comma-lBracket-1);
+        string y = line.substr(comma+1, rBracket-comma-1);
+        x.erase(remove_if(x.begin(), x.end(), ::isspace),x.end());
+        y.erase(remove_if(y.begin(), y.end(), ::isspace),y.end());
+       // cout<<"x: "<<x<<"y: "<<y<<endl;
 
 
         //cm coordinates
@@ -179,9 +183,8 @@ int changeCoordinates3(){
         vectorLine pointLine = makeLine(cameraPoint,coordinate);
         Triple intersection = getPlaneLineIntersection(focusPlane, pointLine);
 
-        string start_string = line.substr (0,pos_first_bracket);
 
-        output_txt <<start_string<<"("<<intersection.x/pixelCm<<","<<intersection.y/pixelCm<<")\n";
+        output_txt <<line.substr(0,lBracket)<<"("<<intersection.x/pixelCm<<","<<intersection.y/pixelCm<<")\n";
         output_txt.flush();
     }
 
