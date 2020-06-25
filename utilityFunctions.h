@@ -16,7 +16,7 @@ int changeCoordinates2();
 
 int changeCoordinates3();
 
-void drawParallax();
+void drawParallax(int val);
 
 int drawPoints();
 
