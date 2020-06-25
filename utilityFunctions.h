@@ -2,6 +2,15 @@
 #define FOUCAULT_OURFUNCTIONS_H
 
 #include <string>
+#include <opencv2/core/types.hpp>
+
+void perspective();
+
+cv::Point2d singlePointPerspective(cv::Point2d);
+
+int changeCoordinatesGeometry();
+
+int changeCoordinatesMatrix();
 
 int changeCoordinates2();
 
