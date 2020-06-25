@@ -39,7 +39,7 @@ void draw() {
 
 
 /** @function main */
-void disegnaParallasse(int val) {
+void drawParallax(int val) {
 
     if(val==0)
         changeCoordinatesGeometry();
