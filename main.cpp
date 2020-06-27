@@ -121,7 +121,7 @@ int main() {
         ourElapsed = t1 - t0;
 
         // preparing frame info to pass on the proper thread
-        frameInfo = std::make_tuple(frame, frame_number, ourElapsed.count());
+        frameInfo = std::make_tuple(frame.clone(), frame_number, ourElapsed.count());
 
         // equally distributing the work on the two queues
         if (frame_number % 2 ==0){
@@ -209,7 +209,7 @@ tuple<Mat, double, double> MatchingMethod( int, void*, const string& whichThread
     result_X->create(result_rows, result_cols, CV_32FC1);
 
     /// Do the Matching and Normalize
-    matchTemplate( croppedFrame, templ, *result_X, match_method );
+    matchTemplate( croppedFrame.clone(), templ, *result_X, match_method );
     normalize( *result_X, *result_X, 0, 1, NORM_MINMAX, -1, Mat() );
 
     /// Localizing the best match with minMaxLoc
@@ -232,7 +232,7 @@ tuple<Mat, double, double> MatchingMethod( int, void*, const string& whichThread
     // saving the center back to txt file
     *position_X = Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows );
 
-    return std::make_tuple(croppedFrame, position_X->x, position_X->y);
+    return std::make_tuple(croppedFrame.clone(), position_X->x, position_X->y);
 }
 
 void frameComputation(const string& whichThread){
@@ -277,7 +277,7 @@ void frameComputation(const string& whichThread){
             // top left corner of the box
             myFrame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(myCroppedFrame);
 
-            tuple<Mat, double, double> myResult = MatchingMethod(0, 0, whichThread, myCroppedFrame);
+            tuple<Mat, double, double> myResult = MatchingMethod(0, 0, whichThread, myCroppedFrame.clone());
             tie(myCroppedFrame, position_X, position_Y) = myResult;
 
             // updating with proper value. At the moment y indicates the distance from the point to the top of the image
@@ -285,7 +285,7 @@ void frameComputation(const string& whichThread){
             double new_position_y = height_frame - position_Y;
 
             // creating the output tuple of the form (cropped_frame, frame_number, time, position_x, position_y)
-            resultQueue_X->push(std::make_tuple(myCroppedFrame, myFrameNumber, ourElapsed, position_X, new_position_y));
+            resultQueue_X->push(std::make_tuple(myCroppedFrame.clone(), myFrameNumber, ourElapsed, position_X, new_position_y));
         }
     }
 }
