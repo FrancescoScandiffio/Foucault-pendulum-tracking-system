@@ -13,8 +13,6 @@ using namespace cv;
 Mat frame;
 Mat templ;
 
-Point position_A;     // locations of recognized centers
-Point position_B;
 String image_window = "Source Image";
 Mat result_A;
 Mat result_B;
@@ -33,7 +31,7 @@ std::queue<tuple<Mat, int, double, double, double>> resultQueue_A;
 std::queue<tuple<Mat, int, double, double, double>> resultQueue_B;
 
 /// Function Headers
-tuple<Mat, double, double> MatchingMethod( int, void*, const string&, Mat croppedFrame);
+tuple<double, double> MatchingMethod( int, void*, const string&, Mat croppedFrame);
 void frameComputation(const string& whichThread);
 
 
@@ -191,15 +189,12 @@ int main() {
  * @function MatchingMethod
  * @brief Trackbar callback
  */
-tuple<Mat, double, double> MatchingMethod( int, void*, const string& whichThread, Mat croppedFrame) {
+tuple<double, double> MatchingMethod( int, void*, const string& whichThread, Mat croppedFrame) {
     Mat *result_X;
-    Point *position_X;
     if(whichThread=="threadA"){
         result_X = &result_A;
-        position_X = &position_A;
     }else{
         result_X = &result_B;
-        position_X = &position_B;
     }
 
     /// Create the result matrix
@@ -209,7 +204,7 @@ tuple<Mat, double, double> MatchingMethod( int, void*, const string& whichThread
     result_X->create(result_rows, result_cols, CV_32FC1);
 
     /// Do the Matching and Normalize
-    matchTemplate( croppedFrame.clone(), templ, *result_X, match_method );
+    matchTemplate( croppedFrame, templ, *result_X, match_method );
     normalize( *result_X, *result_X, 0, 1, NORM_MINMAX, -1, Mat() );
 
     /// Localizing the best match with minMaxLoc
@@ -229,10 +224,8 @@ tuple<Mat, double, double> MatchingMethod( int, void*, const string& whichThread
     rectangle( croppedFrame, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
     rectangle( *result_X, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
 
-    // saving the center back to txt file
-    *position_X = Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows );
-
-    return std::make_tuple(croppedFrame.clone(), position_X->x, position_X->y);
+    // computing and returning the position
+    return std::make_tuple(matchLoc.x + templ.cols, matchLoc.y + templ.rows);
 }
 
 void frameComputation(const string& whichThread){
@@ -277,8 +270,10 @@ void frameComputation(const string& whichThread){
             // top left corner of the box
             myFrame(Rect(Point(30, 0), Point(cols-30,rows))).copyTo(myCroppedFrame);
 
-            tuple<Mat, double, double> myResult = MatchingMethod(0, 0, whichThread, myCroppedFrame.clone());
-            tie(myCroppedFrame, position_X, position_Y) = myResult;
+            // we pass in MatchingMethod a view of the Mat myCroppedFrame. When the functions returns the content of
+            // myCroppedFrame will be changed as we want (in order to show the tracking rectangle)
+            tuple<double, double> myResult = MatchingMethod(0, 0, whichThread, myCroppedFrame);
+            tie( position_X, position_Y) = myResult;
 
             // updating with proper value. At the moment y indicates the distance from the point to the top of the image
             // now y is the distance from point to image bottom
