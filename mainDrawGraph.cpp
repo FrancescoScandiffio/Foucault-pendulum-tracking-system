@@ -29,7 +29,7 @@ void drawGraph(){
     std::queue<Point2d> pointsVector;
 
     /// Create white empty image
-    Mat plot_image = Mat::zeros( 500, 500, CV_8UC3);
+    Mat plot_image = Mat::zeros( 650, 650, CV_8UC3);
     plot_image = cv::Scalar(255, 255, 255);
 
     // the first line is the header line, we discard it
@@ -39,7 +39,7 @@ void drawGraph(){
 
     //setting default speed and number of points displayed
     int speed = 1;
-    int pointNumber=30;
+    int pointNumber=8;
 
     // Read data, line by line
     while(std::getline(input_csv, line)){
@@ -55,10 +55,12 @@ void drawGraph(){
         // we start displaying the points
         cv::line(plot_image, Point2d(x,480-y), Point2d(x,480-y), cv::Scalar(0,0,0), 2);
         // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
-        if (pointsVector.size()==pointNumber){
-            Point2d lastPoint = pointsVector.front();
-            cv::line(plot_image, lastPoint, lastPoint, cv::Scalar(255,255,255), 2);
-            pointsVector.pop();
+        if (pointsVector.size()>=pointNumber){
+            while(pointsVector.size()>pointNumber){
+                Point2d lastPoint = pointsVector.front();
+                cv::line(plot_image, lastPoint, lastPoint, cv::Scalar(255,255,255), 2);
+                pointsVector.pop();
+            }
         }
 
         // destroy old window
@@ -86,10 +88,10 @@ void drawGraph(){
                 }
             }else if(k == 'v' || k == '3'){
                 // change the speed at which the points are displayed
-                printf("Insert speed from 1 to 5:\n");
+                printf("Insert speed from 1 to 4:\n");
                 cin>>speed;
-                while(speed>5 || speed<1){
-                    printf("Please insert valid speed from 1 to 5:");
+                while(speed>4 || speed<0){
+                    printf("Please insert valid speed from 0 to 4:\n");
                     cin>>speed;
                 }
             }else if(k == 's' || k == '4'){
@@ -100,7 +102,7 @@ void drawGraph(){
                 printf("Insert number of points to be displayed from now on: (default 30)\n");
                 cin>>pointNumber;
                 while(pointNumber<5){
-                    printf("Please insert valid number of points > 5:");
+                    printf("Please insert valid number of points > 5:\n");
                     cin>>pointNumber;
                 }
             }else if(k == 'h' || k =='?'){
