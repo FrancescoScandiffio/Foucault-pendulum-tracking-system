@@ -12,7 +12,7 @@ void usage() {
     printf("Program Options:\n");
     printf("  -p or -1          Time paused. Press r to restart.\n");
     printf("  -r or -2          Restart from pause. Press p to pause again.\n");
-    printf("  -v or -3          Change speed in a value from 1 to 5 (default value 2).\n");
+    printf("  -v or -3          Change speed in a value from 0 to 4 (default value 1).\n");
     printf("  -s or -4          Save current image displayed to file.\n");
     printf("  -c or -5          Change number of current coordinates to be displayed (default value 30).\n");
     printf("  -h or -?          This message.\n");
@@ -39,7 +39,7 @@ void drawGraph(){
 
     //setting default speed and number of points displayed
     int speed = 1;
-    int pointNumber=8;
+    int pointNumber=30;
 
     // Read data, line by line
     while(std::getline(input_csv, line)){
@@ -88,7 +88,7 @@ void drawGraph(){
                 }
             }else if(k == 'v' || k == '3'){
                 // change the speed at which the points are displayed
-                printf("Insert speed from 1 to 4:\n");
+                printf("Insert speed from 0 to 4:\n");
                 cin>>speed;
                 while(speed>4 || speed<0){
                     printf("Please insert valid speed from 0 to 4:\n");
