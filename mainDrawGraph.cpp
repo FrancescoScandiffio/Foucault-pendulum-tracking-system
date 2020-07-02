@@ -10,18 +10,31 @@ using namespace std;
 
 void usage() {
     printf("Program Options:\n");
-    printf("  -p or -1          Time paused. Press r to restart.\n");
-    printf("  -r or -2          Restart from pause. Press p to pause again.\n");
-    printf("  -v or -3          Change speed in a value from 0 to 4 (default value 1).\n");
-    printf("  -s or -4          Save current image displayed to file.\n");
-    printf("  -c or -5          Change number of current coordinates to be displayed (default value 30).\n");
-    printf("  -h or -?          This message.\n");
+    printf("While graph window is active press one of the symbols below for additional functionalities\n");
+    printf("-    p or 1          To pause the execution. Press r to restart.\n");
+    printf("-    r or 2          Restart from pause. Press p to pause again.\n");
+    printf("-    v or 3          Change speed in a value from 0 to 4 (default value 1).\n");
+    printf("-    s or 4          Save current image displayed to file.\n");
+    printf("-    c or 5          Change number of current coordinates to be displayed (default value 30).\n");
+    printf("-    h or ?          This message.\n");
 }
 
 void drawGraph(){
-    ifstream input_csv ("../PendulumCsv/prova.csv");
-    if (input_csv.is_open())
-        cout << "Opened input file\n";
+
+    usage();
+
+    String path;
+    fstream input_csv;
+    printf("\n -------------------------------\n");
+    printf("Insert the relative coordinate file path:\n");
+    cin>>path;
+    input_csv.open(path); // e.g. "../PendulumCsv/prova.csv"
+    while(!input_csv.is_open()){
+        printf("Not the expected file, try another one: \n");
+        cin>>path;
+        input_csv.open(path);
+    }
+
 
     // Helper vars
     std::string line, colname;
@@ -29,7 +42,8 @@ void drawGraph(){
     std::queue<Point2d> pointsVector;
 
     /// Create white empty image
-    Mat plot_image = Mat::zeros( 650, 650, CV_8UC3);
+    // image of 640x480 pixels (width x height)
+    Mat plot_image = Mat::zeros( 480, 640, CV_8UC3);
     plot_image = cv::Scalar(255, 255, 255);
 
     // the first line is the header line, we discard it
@@ -96,8 +110,9 @@ void drawGraph(){
                 }
             }else if(k == 's' || k == '4'){
                 // saving the current graph to file
-                String name = "../graph_"+time+".png";
+                String name= "graph_"+time+".png";
                 imwrite(name, plot_image);
+                cout<<"File "<<name<<" saved in project directory."<<endl;
             }else if(k == 'c' || k == '5'){
                 printf("Insert number of points to be displayed from now on: (default 30)\n");
                 cin>>pointNumber;
