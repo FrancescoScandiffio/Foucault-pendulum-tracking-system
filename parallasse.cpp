@@ -12,8 +12,10 @@
 #include <thread>
 #include <zconf.h>
 #include "ourFunctions.h"
+#include <algorithm>
+#include <iostream>
+#include <cctype>
 
-#define point pair<double, double>
 using namespace cv;
 using namespace std;
 
@@ -26,7 +28,7 @@ int position_x=-1;
 int position_y=-1;
 
 void MatchingMethod( int, void* );
-Mat coord_image = Mat::zeros( 7000, 1200, CV_8UC3);
+Mat coord_image = Mat::zeros( 480, 640, CV_8UC3);
 
 void draw() {
     while (true) {
@@ -37,10 +39,14 @@ void draw() {
 
 
 /** @function main */
-void disegnaParallasse() {
+void disegnaParallasse(int val) {
 
-    changeCoordinates3();
-    ifstream input_txt ("../output3.txt");
+    if(val==0)
+        changeCoordinatesGeometry();
+    else
+        changeCoordinatesMatrix();
+
+    ifstream input_txt ("../giugno.txt");
     if (input_txt.is_open())
         cout << "Opened input file.txt\n";
 
@@ -54,25 +60,23 @@ void disegnaParallasse() {
     std::thread first(draw);
     first.detach();
 
-    while(getline(input_txt, line) && iter < 50000) {
+    while(getline(input_txt, line)) {
         // extract the coordinates
-        size_t pos_first_bracket = line.find("(");
-        size_t pos_second_bracket = line.find(")");
-        string coordinates = line.substr(pos_first_bracket + 1, pos_second_bracket - pos_first_bracket - 1);
+        int lBracket = line.find("(");
+        int rBracket = line.find(")");
+        int comma = line.find(",");
 
-        // detect position of the comma to separate x from y
-        size_t pos_comma = coordinates.find(",");
-        string x = coordinates.substr(0, pos_comma);
-        string y = coordinates.substr(pos_comma + 1);
-        //cout<<"x: "<<stod(x)<<", y: "<<stod(y)<<endl;
+        string x = line.substr(lBracket+1, comma-lBracket-1);
+        string y = line.substr(comma+1, rBracket-comma-1);
+        x.erase(remove_if(x.begin(), x.end(), ::isspace),x.end());
+        y.erase(remove_if(y.begin(), y.end(), ::isspace),y.end());
 
-        // taking the last two points extracted from the txt
 
-        new_pt = Point(stod(x), stod(y));
+       new_pt = Point(stod(x), 480-stod(y));
 
         // printing a line between the two points
         cv::line(coord_image, new_pt, new_pt, cv::Scalar(0,0,0), 2);
-        unsigned int t = 50;
+        unsigned int t = 1;
         usleep(t);
         iter++;
     }
@@ -80,66 +84,68 @@ void disegnaParallasse() {
     return;
 }
 
+// C style struct for a 3D point
+struct Triple{
+    double x;
+    double y;
+    double z;
+};
 
-#define point pair<double, double>
-point twoLineIntersection(point A, point B, point C, point D)
-{
-    // Line AB represented as a1x + b1y = c1
-    double a1 = B.second - A.second;
-    double b1 = A.first - B.first;
-    double c1 = a1*(A.first) + b1*(A.second);
+/*
+3D line defined by a direction vector and a point of the line
+parametric equations can be computed as
+x = point.x + vector.x *t
+y = point.y + vector.y *t
+z = point.z + vector.z *t
+ */
+struct vectorLine{
+    Triple point;
+    Triple vector;
+};
 
-    // Line CD represented as a2x + b2y = c2
-    double a2 = D.second - C.second;
-    double b2 = C.first - D.first;
-    double c2 = a2*(C.first)+ b2*(C.second);
-
-    double determinant = a1*b2 - a2*b1;
-
-    if (determinant == 0)
-    {
-        // The lines are parallel. This is simplified
-        // by returning a pair of FLT_MAX
-        std::cerr<<"Lines does NOT intersect"<<endl;
-        return make_pair(FLT_MAX, FLT_MAX);
-    }
-    else
-    {
-        double x = (b2*c1 - b1*c2)/determinant;
-        double y = (a1*c2 - a2*c1)/determinant;
-        return make_pair(x, y);
-    }
+//make a line given two points
+vectorLine makeLine(Triple pointA, Triple pointB){
+    Triple point = pointA;
+    Triple vector = {pointB.x-pointA.x, pointB.y - pointA.y, pointB.z - pointA.z};
+    return {point,vector};
 }
 
-//lines camera,pendulum --> y = x * dx/dy - xp * dx/dy + yp     // m = dx/dy
-//lines perpendicular -->   y = -1/m *x + (xp/m + yp)
+//3D plane defined by its normal vector and the deviation value
+// ax + by + cz + d
+struct Plane{
+    Triple vector;
+    double d;
+};
 
-//equazione della retta perpendicolare nel punto givenPoinat ad un'altra retta con coefficiente angolare noto.
-point getPointOnTilted(double angularCoeff, point givenPoint, double x){
-    double y = -x/angularCoeff + givenPoint.first/angularCoeff + givenPoint.second;
-    return make_pair(x,y);
+//get the plane which contains the pointA and is perpendicular to the given line
+Plane getPerpendicularPlane(vectorLine line, Triple pointA){
+    Triple vector = line.vector;
+    double d = - vector.x * pointA.x - vector.y * pointA.y - vector.z * pointA.z;
+
+    return {vector,d};
 }
 
+Triple getPlaneLineIntersection(Plane plane, vectorLine line){
+    Triple point = line.point;
+    Triple vector = line.vector;
+    Triple planeVector = plane.vector;
+    double t = -(planeVector.x * point.x + planeVector.y * point.y + planeVector.z * point.z + plane.d)
+            / (planeVector.x * vector.x + planeVector.y * vector.y + planeVector.z * vector.z);
 
-int changeCoordinates3(){
+    return {point.x + vector.x*t,point.y + vector.y*t, point.z + vector.z*t };
+}
 
-    double pixelCm = 0.2; //un pixel corrisponde a 0.2258 cm per come è il nostro sistema //todo controlla anche questo
-    point camera = make_pair(130,140); //TODO controllale. Stima molto grossolana
-    point pendulum = make_pair(150,50);
-    //coefficiente angolare della retta passante per il pendolo e la fotocamera. Chiamiamola retta r
-    double angularCoeff = (pendulum.second - camera.second)/(pendulum.first - camera.first);
-
-    //non potendo usare l'equazione esplicita della retta perpendicolare alla retta r nel Pendolo, seleziono due punti
-    //che si trovano su tale retta. Questi due punti permettono di rappresentare la retta in un altro modo a noi utile
-    point tiltedA = getPointOnTilted(angularCoeff, pendulum, 0);
-    point tiltedB = getPointOnTilted(angularCoeff, pendulum, 10);
-
-
-    // frame height of raspberry
-    int height=480;
+int changeCoordinatesGeometry(){
+    //point: x,y,z where z is real-life height. The origin of the reference system is the bottom-left corner of the black
+    //plate on the floor
+    double pixelCm = 0.1; //1 pixel = 0.09774193548 cm
+    Triple cameraPoint = {25.3, 32, 176.5}; // real-life camera position (cm)
+    Triple pendulumPoint = {30.6,32, 14.2};// real-life pendulum position (cm)
+    vectorLine focusLine = makeLine(cameraPoint,pendulumPoint);
+    Plane focusPlane = getPerpendicularPlane(focusLine, pendulumPoint);
 
 
-    ifstream input_txt ("../Fri May 29 14-02-27 2020.txt");
+    ifstream input_txt ("../giugno.txt");
     if (input_txt.is_open())
         cout << "Opened input file.txt\n";
 
@@ -151,36 +157,27 @@ int changeCoordinates3(){
     while(getline(input_txt, line)) {
 
         // extract the coordinates
-        size_t pos_first_bracket = line.find("(");
-        size_t pos_second_bracket = line.find(")");
-        string coordinates = line.substr (pos_first_bracket+1, pos_second_bracket-pos_first_bracket-1);
-        //cout<<coordinates<<endl;
+        int lBracket = line.find("(");
+        int rBracket = line.find(")");
+        int comma = line.find(",");
 
-        // detect position of the comma to separate x from y
-        size_t pos_comma = coordinates.find(",");
-        string x=coordinates.substr (0,pos_comma);
-        string y=coordinates.substr (pos_comma+2);
-        //cout<<"x: "<<x<<", y: "<<y<<endl;
+        string x = line.substr(lBracket+1, comma-lBracket-1);
+        string y = line.substr(comma+1, rBracket-comma-1);
+        x.erase(remove_if(x.begin(), x.end(), ::isspace),x.end());
+        y.erase(remove_if(y.begin(), y.end(), ::isspace),y.end());
 
-        // updating with proper value. At the moment y indicates the distance from the point to the top of the image
-        // now y is the distance from point to image bottom
-        int new_y=height-stoi(y);
-
-        /// correcting the parallax:
-        // translating the system to camera coordinates
         double oldX = stoi(x);
+        double oldY = stoi(y);
 
+        double cmX = oldX * pixelCm;
+        double cmY = oldY * pixelCm ;
+        Triple coordinate = {cmX, cmY, 14.2};
+        vectorLine pointLine = makeLine(cameraPoint,coordinate);
+        Triple intersection = getPlaneLineIntersection(focusPlane, pointLine);
 
-        //uso i punti tilted estratti per calcolare l'interesezione tra la retta e la retta che passa tra la camera ed il
-        //generico punto P
-
-        point oldPoint = make_pair(oldX * pixelCm,0);
-        point newPoint = twoLineIntersection(tiltedA, tiltedB, camera, oldPoint);
-
-        string start_string = line.substr (0,pos_first_bracket);
-        // saving to txt
-        output_txt <<start_string<<"("<<newPoint.first/pixelCm<<","<<new_y<<")\n";
+        output_txt <<line.substr(0,lBracket)<<"("<<intersection.x/pixelCm<<","<<intersection.y/pixelCm<<")\n";
         output_txt.flush();
+
     }
 
     // closing the txt files
@@ -188,3 +185,46 @@ int changeCoordinates3(){
     output_txt.close();
     return 0;
 }
+
+
+
+int changeCoordinatesMatrix(){
+
+    ifstream input_txt ("../giugno.txt");
+    if (input_txt.is_open())
+        cout << "Opened input file.txt\n";
+
+    ofstream output_txt ("../output3.txt");
+    if (output_txt.is_open())
+        cout << "Opened output file.txt\n";
+
+    string line;
+    while(getline(input_txt, line)) {
+
+        int lBracket = line.find("(");
+        int rBracket = line.find(")");
+        int comma = line.find(",");
+
+        string x = line.substr(lBracket+1, comma-lBracket-1);
+        string y = line.substr(comma+1, rBracket-comma-1);
+        x.erase(remove_if(x.begin(), x.end(), ::isspace),x.end());
+        y.erase(remove_if(y.begin(), y.end(), ::isspace),y.end());
+
+        double oldX = stoi(x);
+        double oldY = stoi(y);
+
+        Point2d old = Point2d(oldX,oldY);
+        Point2d nuovo = singlePointPerspective(old);
+
+
+        output_txt <<line.substr(0,lBracket)<<"("<<nuovo.x<<","<<nuovo.y<<")\n";
+        output_txt.flush();
+
+    }
+
+    // closing the txt files
+    input_txt.close();
+    output_txt.close();
+    return 0;
+}
+
