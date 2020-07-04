@@ -124,10 +124,3 @@ Point2d singlePointPerspective(Point2d src){
     return destination;
 
 }
-
-void cameraCalibration(){
-
-
-
-
-}

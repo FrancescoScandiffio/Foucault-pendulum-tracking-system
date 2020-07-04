@@ -2,24 +2,21 @@
 #define FOUCAULT_OURFUNCTIONS_H
 
 #include <string>
+#include <opencv2/core/types.hpp>
 
-int oldMain();
+void perspective();
 
-int meanShiftTest();
+cv::Point2d singlePointPerspective(cv::Point2d);
 
-int circleDetector();
+int changeCoordinatesGeometry();
 
-int colorTracking(std::string chosenColor);
-
-int changeCoordinates();
+int changeCoordinatesMatrix();
 
 int changeCoordinates2();
 
 int changeCoordinates3();
 
-void disegnaParallasse();
-
-cv::Point2f rotate_and_translate(cv::Point2f point);
+void drawParallax(int val);
 
 int drawPoints();
 

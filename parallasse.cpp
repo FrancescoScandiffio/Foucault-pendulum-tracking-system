@@ -39,7 +39,7 @@ void draw() {
 
 
 /** @function main */
-void disegnaParallasse(int val) {
+void drawParallax(int val) {
 
     if(val==0)
         changeCoordinatesGeometry();
@@ -227,4 +227,3 @@ int changeCoordinatesMatrix(){
     output_txt.close();
     return 0;
 }
-
