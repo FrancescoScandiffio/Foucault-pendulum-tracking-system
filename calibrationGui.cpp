@@ -3,6 +3,8 @@
 #include <opencv2/opencv.hpp>
 #include <unistd.h>
 #include <iostream>
+#include <string>
+#include <fstream>
 
 using namespace std;
 using namespace cv;
@@ -29,10 +31,9 @@ void mouseCallBack(int event, int x, int y, int flags, void *userdata){
             cerr<<"BUTTON ERROR. CAN'T HANDLE";
             exit(-3);
         }
-        else{
+        else
             pointArray[currentButton] = Point(x,y);
-            cout<<"debug. currentButton: "<<currentButton<<" x:"<<x<<" y:"<<y<<endl;
-        }
+
     }
 }
 
@@ -164,7 +165,7 @@ int calibrateCamera(){
         cv::line(frame, pointArray[2], pointArray[3], cv::Scalar(0,0,0), 1);
         cv::line(frame, pointArray[1], pointArray[3], cv::Scalar(0,0,0), 1);
 
-        matrix = getPerspectiveTransform(pointArray, perspectiveArray);
+        matrix = getPerspectiveTransform(pointArray, v2);
         Size dsize = Size(resultWidth, resultHeight);
         warpPerspective(frame, result, matrix, dsize);
         imshow(transform, result);
@@ -174,3 +175,38 @@ int calibrateCamera(){
     return 0;
 }
 
+
+int exampleMain(int argc, char *argv[]) {
+
+    if (argc > 2) {
+        cerr << "Too many arguments" << endl;
+        cout << "Execute with option '-h' or '-help' (without quotes) to see all the possible configuration" << endl;
+        exit(1);
+    }
+    if (argc == 2) {
+        if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0) {
+            //TODO aggiungere testo. Da mettere alla fine
+            exit(0);
+
+            //help
+
+        }
+        if (strcmp(argv[1], "-c") == 0 || strcmp(argv[1], "-calibrate") == 0) {
+            calibrateCamera();
+            exit(0);
+        }
+
+        if (strcmp(argv[1], "-g") == 0 || strcmp(argv[1], "-graph") == 0) {
+            //TODO qui metti la chiamata alla tua funzione che disegna il grafico
+            exit(0);
+
+            cerr << argv[1] << " is an unknown option" << endl;
+            exit(1);
+        }
+
+        cout << "Execute with option '-h' or '-help' (without quotes) to see all the possible configuration" << endl;
+
+    }
+
+
+}

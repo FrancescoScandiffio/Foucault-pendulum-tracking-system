@@ -4,6 +4,7 @@
 #include <opencv2/opencv.hpp>
 #include <fstream>
 #include <thread>
+#include "guiFunctions.h"
 
 using namespace cv;
 using namespace std;
@@ -131,8 +132,4 @@ void drawGraph(){
     input_csv.close();
 }
 
-int main() {
-    drawGraph();
-    return 0;
-}
 

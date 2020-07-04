@@ -92,11 +92,6 @@ L'inversa che a noi serve è
     {-0, 0.9980157113920193, -0},
     {9.890047789614893e-06, 3.840426092853079e-06, 1.000348104823065}};
 
-
-
-
-
-
  */
 
 Point2d singlePointPerspective(Point2d src){

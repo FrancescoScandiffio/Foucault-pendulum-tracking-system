@@ -11,7 +11,7 @@
 #include <iostream>
 #include <thread>
 #include <zconf.h>
-#include "ourFunctions.h"
+#include "utilityFunctions.h"
 #include <algorithm>
 #include <iostream>
 #include <cctype>
@@ -20,14 +20,6 @@ using namespace cv;
 using namespace std;
 
 
-int match_method=5;
-int max_Trackbar = 5;
-int frame_number=0;
-
-int position_x=-1;
-int position_y=-1;
-
-void MatchingMethod( int, void* );
 Mat coord_image = Mat::zeros( 480, 640, CV_8UC3);
 
 void draw() {

@@ -15,7 +15,9 @@ inline bool fileExist(const std::string &name);
 
 int calibrateCamera();
 
+void drawGraph();
 
+void usage();
 
 
 

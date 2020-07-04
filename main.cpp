@@ -4,9 +4,8 @@
 #include <fstream>
 #include <thread>
 #include <tuple>
-#include "utilityFunctions.h"
-
 #include "guiFunctions.h"
+#include "utilityFunctions.h"
 
 using namespace std;
 using namespace cv;
@@ -42,33 +41,32 @@ void writeFile();
 /** @function main */
 int main(int argc, char *argv[]) {
 
-    if(argc > 2) {
+    if (argc > 2) {
         cerr << "Too many arguments" << endl;
         cout << "Execute with option '-h' or '-help' (without quotes) to see all the possible configuration" << endl;
         exit(1);
     }
-    if(argc==2){
-        if(strcmp(argv[1],"-h")==0 || strcmp(argv[1],"-help")==0 ){
+    if (argc == 2) {
+        if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0) {
             //TODO aggiungere testo. Da mettere alla fine
             exit(0);
-
-            //help
-
         }
-        if(strcmp(argv[1],"-c")==0 || strcmp(argv[1],"-calibrate")==0 ) {
+
+        if (strcmp(argv[1], "-c") == 0 || strcmp(argv[1], "-calibrate") == 0) {
             calibrateCamera();
             exit(0);
         }
 
-        if(strcmp(argv[1],"-g")==0 || strcmp(argv[1],"-graph")==0 ) {
-            //TODO qui metti la chiamata alla tua funzione che disegna il grafico
+        if (strcmp(argv[1], "-g") == 0 || strcmp(argv[1], "-graph") == 0) {
+            drawGraph();
             exit(0);
+        }
 
-        cerr << argv[1]<<" is an unknown option" << endl;
+        cerr << argv[1] << " is an unknown option" << endl;
         exit(1);
     }
 
-    cout << "Execute with option '-h' or '-help' (without quotes) to see all the possible configuration" << endl;
+    cout << "Execute with option '-h' or '-help' (without quotes) to see all the possible arguments" << endl;
 
     typedef std::chrono::high_resolution_clock Time;
     typedef std::chrono::duration<double> elapsedDouble;
@@ -78,12 +76,12 @@ int main(int argc, char *argv[]) {
 
     ///If on Raspberry:
     // open the default camera
-    //VideoCapture capture(0);
+    VideoCapture capture(0);
     // setting fps rate of video to grab
-    //capture.set(CAP_PROP_FPS, int(9));
+    capture.set(CAP_PROP_FPS, int(9));
 
     ///If working locally:
-    VideoCapture capture("../videos/output.mp4");
+    //VideoCapture capture("../videos/output.mp4");
 
     Mat originalFrame;
     capture.read(originalFrame);
@@ -348,4 +346,3 @@ void writeFile(){
     // closing the txt file
     txt_file.close();
 }
-

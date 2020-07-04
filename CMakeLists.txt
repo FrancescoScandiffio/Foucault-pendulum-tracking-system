@@ -3,7 +3,7 @@ project(Foucault)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES main.cpp ourFunctions.h perspective.cpp utilityFunctions.h calibrationGui.cpp guiFunctions.h)
+set(SOURCE_FILES main.cpp perspective.cpp calibrationGui.cpp guiFunctions.h parallasse.cpp mainDrawGraph.cpp)
 
 add_executable(Foucault ${SOURCE_FILES})
 set(CMAKE_THREAD_LIBS_INIT "-lpthread")
