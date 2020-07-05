@@ -198,7 +198,7 @@ tuple<double, double> MatchingMethod( int, void*, const string& whichThread, Mat
     rectangle( *result_X, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
 
     // computing and returning the position
-    return std::make_tuple(matchLoc.x + templ.cols, matchLoc.y + templ.rows);
+    return std::make_tuple(matchLoc.x + templ.cols/2, matchLoc.y + templ.rows/2);
 }
 
 void frameComputation(const string& whichThread){
