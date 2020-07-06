@@ -3,6 +3,8 @@
 #include <opencv2/opencv.hpp>
 #include <fstream>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <tuple>
 #include "guiFunctions.h"
 #include "utilityFunctions.h"
@@ -18,6 +20,16 @@ double myMatrix[3][3];
 String image_window = "Source Image";
 Mat result_A;
 Mat result_B;
+
+// flag needed to activate the visualization of the movements graph, instead of the usual pendulum vision
+bool is_graph_activated=false;
+int pointNumber = 30;
+int expectedFrameNumber=0;
+
+//for graph of movements
+std::queue<Point2d> pointsVector;
+// image of 640x480 pixels (width x height)
+Mat plot_image = Mat::zeros( 480, 640, CV_8UC3);
 
 int match_method=5;
 int max_Trackbar = 5;
@@ -35,7 +47,9 @@ std::queue<tuple<Mat, int, double, double, double>> resultQueue_B;
 /// Function Headers
 tuple<double, double> MatchingMethod( int, void*, const string&, Mat croppedFrame);
 void frameComputation(const string& whichThread);
-void writeFile();
+[[noreturn]] void writeFile();
+void usageRealtime();
+void showFrame(const Mat& frameToPrint);
 
 
 /** @function main */
@@ -120,6 +134,10 @@ int main(int argc, char *argv[]) {
     thread1.detach();
     thread2.detach();
     thread3.detach();
+    usageRealtime();
+
+    // initializing Mat of graph of movements
+    plot_image = cv::Scalar(255, 255, 255);
 
     while(true) {
 
@@ -256,7 +274,7 @@ void frameComputation(const string& whichThread){
     }
 }
 
-void writeFile(){
+[[noreturn]] void writeFile(){
 
     /// Getting the current time
     chrono::system_clock::time_point p = chrono::system_clock::now();
@@ -274,7 +292,6 @@ void writeFile(){
 
     txt_file <<"time x y\n";
 
-    int expectedFrameNumber=0;
     bool alreadyExtracted_A = false;
     bool alreadyExtracted_B = false;
 
@@ -291,7 +308,7 @@ void writeFile(){
     Mat extracted_Mat_B;
 
     while(true){
-
+        //TODO togliere sleep e mettere variabile di condizione
         this_thread::sleep_for(chrono::seconds(5));
         for(int iter=0; iter<100; iter++){
 
@@ -315,9 +332,25 @@ void writeFile(){
                 // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
                 expectedFrameNumber++;
                 alreadyExtracted_A=false;
-                imshow( image_window, extracted_Mat_A);
-                // show live and wait for a key with timeout long enough to show images
-                waitKey(1);
+
+                if(is_graph_activated){
+                    // we add the new point to the pointsVector to be shown on plot_image Mat
+                    pointsVector.push(Point2d(pos_X_A,480-pos_Y_A));
+                    // we start displaying the points
+                    cv::line(plot_image, Point2d(pos_X_A,480-pos_Y_A), Point2d(pos_X_A,480-pos_Y_A), cv::Scalar(0,0,0), 2);
+                    // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
+                    if (pointsVector.size()>=pointNumber){
+                        while(pointsVector.size()>pointNumber){
+                            Point2d lastPoint = pointsVector.front();
+                            cv::line(plot_image, lastPoint, lastPoint, cv::Scalar(255,255,255), 2);
+                            pointsVector.pop();
+                        }
+                    }
+                    showFrame(plot_image.clone());
+
+                }else{
+                    showFrame(extracted_Mat_A.clone());
+                }
             }
             // doing the same for the other queue and thread
             if(!alreadyExtracted_B){
@@ -336,13 +369,71 @@ void writeFile(){
                 // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
                 expectedFrameNumber++;
                 alreadyExtracted_B=false;
-                imshow( image_window, extracted_Mat_B);
-                // show live and wait for a key with timeout long enough to show images
-                waitKey(1);
+
+                if(is_graph_activated){
+                    // we add the new point to the pointsVector to be shown on plot_image Mat
+                    pointsVector.push(Point2d(pos_X_B,480-pos_Y_B));
+                    // we start displaying the points
+                    cv::line(plot_image, Point2d(pos_X_B,480-pos_Y_B), Point2d(pos_X_B,480-pos_Y_B), cv::Scalar(0,0,0), 2);
+                    // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
+                    if (pointsVector.size()>=pointNumber){
+                        while(pointsVector.size()>pointNumber){
+                            Point2d lastPoint = pointsVector.front();
+                            cv::line(plot_image, lastPoint, lastPoint, cv::Scalar(255,255,255), 2);
+                            pointsVector.pop();
+                        }
+                    }
+                    showFrame(plot_image.clone());
+                }else{
+                    showFrame(extracted_Mat_B.clone());
+                }
             }
         }
     }
     txt_file <<ctime(&t)<<endl;;
     // closing the txt file
     txt_file.close();
+}
+
+void showFrame(const Mat& frameToPrint){
+
+    imshow( image_window, frameToPrint);
+    int k = waitKey(0); // Wait for a keystroke in the window
+    if(k == 't' || k == '1') {
+        is_graph_activated = !is_graph_activated;
+
+        // clearing the current queue of points to show
+        std::queue<Point2d> empty;
+        std::swap( pointsVector, empty );
+        //also clearing the Mat
+        plot_image = cv::Scalar(255, 255, 255);
+
+    }else if(k == 's' || k == '2'){
+        // saving the current graph to file
+        String name= "frame_"+to_string(expectedFrameNumber)+".png";
+        imwrite(name, frameToPrint);
+        cout<<"File "<<name<<" saved in project directory."<<endl;
+
+    }else if(k == 'c' || k == '3'){
+        printf("Insert number of points to be displayed from now on: (default 30)\n");
+        cin>>pointNumber;
+        while(pointNumber<5){
+            printf("Please insert valid number of points > 5:\n");
+            cin>>pointNumber;
+        }
+    }else if(k == 'h' || k =='?'){
+        usageRealtime();
+
+    }else if(k != -1){
+        printf("Invalid command. Press h for help\n");
+    }
+}
+
+void usageRealtime() {
+    printf("Program Options:\n");
+    printf("While pendulum / graph window is active press one of the symbols below for additional functionalities\n");
+    printf("-    t or 1          To toggle between pendulum window (default) and graph of movements.\n");
+    printf("-    s or 2          Save current image displayed to file.\n");
+    printf("-    c or 3          Change number of current coordinates to be displayed (default value 30).\n");
+    printf("-    h or ?          This message.\n");
 }
