@@ -30,13 +30,11 @@ int expectedFrameNumber=0;
 //for graph of movements
 std::queue<Point2d> pointsVector;
 // image of 640x480 pixels (width x height)
-Mat plot_image = Mat::zeros( 480, 640, CV_8UC3);
+Mat plot_image;
 
 int match_method=5;
 int max_Trackbar = 5;
 
-// frame height of raspberry
-int height_frame=480;
 
 /// This is how we handle the frames, using two queues for the two threads
 std::queue<std::tuple<Mat, int, double>> frameQueue_A;
@@ -108,6 +106,9 @@ int main(int argc, char *argv[]) {
 
     int frameWidth = originalFrame.size().width;
     frameHeight = originalFrame.size().height;
+    
+    plot_image = Mat::zeros( frameHeight, frameWidth, CV_8UC3);
+    
     Point2f v1[] = {p1,p2,p3,p4};
     Point p6 = Point(frameWidth, 0);
     Point p7 = Point(0, frameHeight);
@@ -267,7 +268,7 @@ void frameComputation(const string& whichThread){
 
             num = myMatrix[1][0]*position_X+myMatrix[1][1]*position_Y+myMatrix[1][2];
             dem = myMatrix[2][0]*position_X+myMatrix[2][1]*position_Y+myMatrix[2][2];
-            new_position_y = height_frame - num/dem;
+            new_position_y = frameHeight- num/dem;
 
             // creating the output tuple of the form (cropped_frame, frame_number, time, position_x, position_y)
             resultQueue_X->push(std::make_tuple(myFrame.clone(), myFrameNumber, ourElapsed, new_position_x, new_position_y));
@@ -336,9 +337,9 @@ void frameComputation(const string& whichThread){
 
                 if(is_graph_activated){
                     // we add the new point to the pointsVector to be shown on plot_image Mat
-                    pointsVector.push(Point2d(pos_X_A,480-pos_Y_A));
+                    pointsVector.push(Point2d(pos_X_A,frameHeight-pos_Y_A));
                     // we start displaying the points
-                    cv::line(plot_image, Point2d(pos_X_A,480-pos_Y_A), Point2d(pos_X_A,480-pos_Y_A), cv::Scalar(0,0,0), 2);
+                    cv::line(plot_image, Point2d(pos_X_A,frameHeight-pos_Y_A), Point2d(pos_X_A,frameHeight-pos_Y_A), cv::Scalar(0,0,0), 2);
                     // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
                     if (pointsVector.size()>=pointNumber){
                         while(pointsVector.size()>pointNumber){
@@ -373,9 +374,9 @@ void frameComputation(const string& whichThread){
 
                 if(is_graph_activated){
                     // we add the new point to the pointsVector to be shown on plot_image Mat
-                    pointsVector.push(Point2d(pos_X_B,480-pos_Y_B));
+                    pointsVector.push(Point2d(pos_X_B,frameHeight-pos_Y_B));
                     // we start displaying the points
-                    cv::line(plot_image, Point2d(pos_X_B,480-pos_Y_B), Point2d(pos_X_B,480-pos_Y_B), cv::Scalar(0,0,0), 2);
+                    cv::line(plot_image, Point2d(pos_X_B,frameHeight-pos_Y_B), Point2d(pos_X_B,frameHeight-pos_Y_B), cv::Scalar(0,0,0), 2);
                     // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
                     if (pointsVector.size()>=pointNumber){
                         while(pointsVector.size()>pointNumber){
