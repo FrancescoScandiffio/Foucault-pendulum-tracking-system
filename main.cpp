@@ -16,6 +16,7 @@ using namespace cv;
 Mat frame;
 Mat templ;
 double myMatrix[3][3];
+int frameHeight;
 
 String image_window = "Source Image";
 Mat result_A;
@@ -83,7 +84,7 @@ int main(int argc, char *argv[]) {
     cout << "Execute with option '-h' or '-help' (without quotes) to see all the possible arguments" << endl;
 
     typedef std::chrono::high_resolution_clock Time;
-    typedef std::chrono::duration<double> elapsedDouble;
+    typedef std::chrono::duration<double> TimeCast;
 
     /// Load image and template
     templ = imread( "../images/template2.png", 1 );
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
     Point p5 = Point(0, 0);
 
     int frameWidth = originalFrame.size().width;
-    int frameHeight = originalFrame.size().height;
+    frameHeight = originalFrame.size().height;
     Point2f v1[] = {p1,p2,p3,p4};
     Point p6 = Point(frameWidth, 0);
     Point p7 = Point(0, frameHeight);
@@ -119,10 +120,10 @@ int main(int argc, char *argv[]) {
             cout<<myMatrix[i][j]<<"  ";
         }
 
-    auto t0 = Time::now();
-    auto t1 = Time::now();
-    elapsedDouble ourElapsed=t1-t0;
-    double start = false;
+    auto startTime = Time::now();
+    auto newTime = Time::now();
+    TimeCast elapsed=newTime - startTime;
+    bool start = false;
 
     std::tuple<Mat, int, double> frameInfo;
     int frame_number=0;
@@ -149,15 +150,15 @@ int main(int argc, char *argv[]) {
         }
 
         /// Getting the current timestamp to save it to the file
-        t1 = Time::now();
+        newTime = Time::now();
         if(!start){
-            t0 = t1;
+            startTime = newTime;
             start=true;
         }
-        ourElapsed = t1 - t0;
+        elapsed = newTime - startTime;
 
         // preparing frame info to pass on the proper thread
-        frameInfo = std::make_tuple(frame.clone(), frame_number, ourElapsed.count());
+        frameInfo = std::make_tuple(frame.clone(), frame_number, elapsed.count());
 
         // equally distributing the work on the two queues
         if (frame_number % 2 ==0){
@@ -326,7 +327,7 @@ void frameComputation(const string& whichThread){
             // looking at the current frame number expected to be written)
             if(expectedFrameNumber==frameNumber_A){
                 // saving to txt the positions found in MatchingMethod
-                txt_file <<elapsed_A <<" "<<pos_X_A<<" "<<pos_Y_A<<"\n";
+                txt_file <<fixed<<elapsed_A <<" "<<pos_X_A<<" "<<pos_Y_A<<"\n";
                 txt_file.flush();
 
                 // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
@@ -363,7 +364,7 @@ void frameComputation(const string& whichThread){
             }
             if(expectedFrameNumber==frameNumber_B){
                 // saving to txt the positions found in MatchingMethod
-                txt_file << elapsed_B<<" "<<pos_X_B<<" "<<pos_Y_B<<"\n";
+                txt_file <<fixed<< elapsed_B<<" "<<pos_X_B<<" "<<pos_Y_B<<"\n";
                 txt_file.flush();
 
                 // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
