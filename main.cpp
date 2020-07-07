@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
     typedef std::chrono::duration<double> TimeCast;
 
     /// Load image and template
-    templ = imread( "../images/template2.png", 1 );
+    templ = imread( "template2.png", 1 );
 
     ///If on Raspberry:
     // open the default camera
