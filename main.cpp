@@ -43,6 +43,14 @@ std::queue<std::tuple<Mat, int, double>> frameQueue_B;
 std::queue<tuple<Mat, int, double, double, double>> resultQueue_A;
 std::queue<tuple<Mat, int, double, double, double>> resultQueue_B;
 
+// to make request for extracting from queue the inserted frames to write back to file
+struct request{
+    std::mutex mx;
+    std::condition_variable cv;
+};
+request requestA;
+request requestB;
+
 /// Function Headers
 tuple<double, double> MatchingMethod( int, void*, const string&, Mat croppedFrame);
 void frameComputation(const string& whichThread);
@@ -229,14 +237,17 @@ void frameComputation(const string& whichThread){
     std::queue<tuple<Mat, int, double, double, double>> *resultQueue_X;
     double position_X;
     double position_Y;
+    request *requestX;
 
     // taking the reference of the proper queues
     if(whichThread=="threadA"){
         frameQueue_X = &frameQueue_A;
         resultQueue_X = &resultQueue_A;
+        requestX = &requestA;
     }else{
-        frameQueue_X=&frameQueue_B;
-        resultQueue_X=&resultQueue_B;
+        frameQueue_X = &frameQueue_B;
+        resultQueue_X = &resultQueue_B;
+        requestX = &requestB;
     }
 
     // iterating through the queue
@@ -257,7 +268,6 @@ void frameComputation(const string& whichThread){
             tuple<double, double> myResult = MatchingMethod(0, 0, whichThread, myFrame);
             tie( position_X, position_Y) = myResult;
 
-
             double new_position_x = -1;
             double new_position_y = -1;
 
@@ -272,6 +282,10 @@ void frameComputation(const string& whichThread){
 
             // creating the output tuple of the form (cropped_frame, frame_number, time, position_x, position_y)
             resultQueue_X->push(std::make_tuple(myFrame.clone(), myFrameNumber, ourElapsed, new_position_x, new_position_y));
+
+            // acquiring the lock and notify the consumer (writeFile) of added element to the queue
+            std::lock_guard<std::mutex> lock(requestX->mx);
+            requestX->cv.notify_one();
         }
     }
 }
@@ -294,103 +308,64 @@ void frameComputation(const string& whichThread){
 
     txt_file <<"time x y\n";
 
-    bool alreadyExtracted_A = false;
-    bool alreadyExtracted_B = false;
-
-    int frameNumber_A=-1;
-    int frameNumber_B=-1;
-    double elapsed_A=-1.0;
-    double elapsed_B=-1.0;
-    double pos_X_A;
-    double pos_X_B;
-    double pos_Y_A;
-    double pos_Y_B;
-
-    Mat extracted_Mat_A;
-    Mat extracted_Mat_B;
+    int frameNumber_X=-1;
+    double elapsed_X=-1.0;
+    double pos_X;
+    double pos_Y;
+    std::queue<tuple<Mat, int, double, double, double>> *resultQueue_X;
+    Mat extracted_Mat_X;
+    Point2d lastPoint;
 
     while(true){
-        //TODO togliere sleep e mettere variabile di condizione
-        this_thread::sleep_for(chrono::seconds(5));
-        for(int iter=0; iter<100; iter++){
 
-            // extracting elements from the first queue if not already done in the previous iteration without writing the
-            // result to the txt file
-            if(!alreadyExtracted_A){
-                if(!resultQueue_A.empty()){
-                    tie(extracted_Mat_A, frameNumber_A, elapsed_A, pos_X_A, pos_Y_A) = resultQueue_A.front();
-                    resultQueue_A.pop();
-                    // we extracted the element from the queue
-                    alreadyExtracted_A=true;
-                }
-            }
-            // if the frame extracted from resultQueue_A is the frame that has to be written in the txt (and we know it by
-            // looking at the current frame number expected to be written)
-            if(expectedFrameNumber==frameNumber_A){
-                // saving to txt the positions found in MatchingMethod
-                txt_file <<fixed<<elapsed_A <<" "<<pos_X_A<<" "<<pos_Y_A<<"\n";
-                txt_file.flush();
-
-                // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
-                expectedFrameNumber++;
-                alreadyExtracted_A=false;
-
-                if(is_graph_activated){
-                    // we add the new point to the pointsVector to be shown on plot_image Mat
-                    pointsVector.push(Point2d(pos_X_A,frameHeight-pos_Y_A));
-                    // we start displaying the points
-                    cv::line(plot_image, Point2d(pos_X_A,frameHeight-pos_Y_A), Point2d(pos_X_A,frameHeight-pos_Y_A), cv::Scalar(0,0,0), 2);
-                    // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
-                    if (pointsVector.size()>=pointNumber){
-                        while(pointsVector.size()>pointNumber){
-                            Point2d lastPoint = pointsVector.front();
-                            cv::line(plot_image, lastPoint, lastPoint, cv::Scalar(255,255,255), 2);
-                            pointsVector.pop();
-                        }
-                    }
-                    showFrame(plot_image.clone());
-
-                }else{
-                    showFrame(extracted_Mat_A.clone());
-                }
-            }
-            // doing the same for the other queue and thread
-            if(!alreadyExtracted_B){
-                if(!resultQueue_B.empty()){
-                    tie(extracted_Mat_B, frameNumber_B, elapsed_B, pos_X_B, pos_Y_B) = resultQueue_B.front();
-                    resultQueue_B.pop();
-                    // we extracted the element from the queue
-                    alreadyExtracted_B=true;
-                }
-            }
-            if(expectedFrameNumber==frameNumber_B){
-                // saving to txt the positions found in MatchingMethod
-                txt_file <<fixed<< elapsed_B<<" "<<pos_X_B<<" "<<pos_Y_B<<"\n";
-                txt_file.flush();
-
-                // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
-                expectedFrameNumber++;
-                alreadyExtracted_B=false;
-
-                if(is_graph_activated){
-                    // we add the new point to the pointsVector to be shown on plot_image Mat
-                    pointsVector.push(Point2d(pos_X_B,frameHeight-pos_Y_B));
-                    // we start displaying the points
-                    cv::line(plot_image, Point2d(pos_X_B,frameHeight-pos_Y_B), Point2d(pos_X_B,frameHeight-pos_Y_B), cv::Scalar(0,0,0), 2);
-                    // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
-                    if (pointsVector.size()>=pointNumber){
-                        while(pointsVector.size()>pointNumber){
-                            Point2d lastPoint = pointsVector.front();
-                            cv::line(plot_image, lastPoint, lastPoint, cv::Scalar(255,255,255), 2);
-                            pointsVector.pop();
-                        }
-                    }
-                    showFrame(plot_image.clone());
-                }else{
-                    showFrame(extracted_Mat_B.clone());
-                }
-            }
+        // checking if the expected frame number is even or odd (if even we extract from the resultQueue_A, if
+        // odd from the resultQueue_B)
+        if (expectedFrameNumber % 2 ==0){
+            //waiting until some elements is added to the queue of results
+            cout<<"ehi"<<endl;
+            std::unique_lock<std::mutex> lock(requestA.mx);
+            requestA.cv.wait(lock, []{return !resultQueue_A.empty();});
+            resultQueue_X = &resultQueue_A;
+            cout<<"qui"<<endl;
+        }else{
+            //waiting until some elements is added to the queue of results
+            cout<<"quo"<<endl;
+            std::unique_lock<std::mutex> lock(requestB.mx);
+            requestB.cv.wait(lock, []{return !resultQueue_B.empty();});
+            resultQueue_X = &resultQueue_B;
+            cout<<"quo"<<endl;
         }
+
+        //a frame has been added to the queue we were waiting for, now we can extract the desired frame and related variables
+        tie(extracted_Mat_X, frameNumber_X, elapsed_X, pos_X, pos_Y) = resultQueue_X->front();
+        resultQueue_X->pop();
+
+        // saving to txt the positions found in MatchingMethod
+        txt_file <<fixed<<elapsed_X <<" "<<pos_X<<" "<<pos_Y<<"\n";
+        txt_file.flush();
+
+        cout<<"pippo"<<endl;
+        if(is_graph_activated){
+            // we add the new point to the pointsVector to be shown on plot_image Mat
+            pointsVector.push(Point2d(pos_X,frameHeight-pos_Y));
+            // we start displaying the points
+            cv::line(plot_image, Point2d(pos_X,frameHeight-pos_Y), Point2d(pos_X,frameHeight-pos_Y), cv::Scalar(0,0,0), 2);
+            // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
+            if (pointsVector.size()>=pointNumber){
+                while(pointsVector.size()>pointNumber){
+                    lastPoint = pointsVector.front();
+                    cv::line(plot_image, lastPoint, lastPoint, cv::Scalar(255,255,255), 2);
+                    pointsVector.pop();
+                }
+            }
+            showFrame(plot_image);
+        }else{
+            showFrame(extracted_Mat_X);
+
+        }
+
+        // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
+        expectedFrameNumber++;
     }
     txt_file <<ctime(&t)<<endl;;
     // closing the txt file
@@ -398,7 +373,6 @@ void frameComputation(const string& whichThread){
 }
 
 void showFrame(const Mat& frameToPrint){
-
     imshow( image_window, frameToPrint);
     int k = waitKey(0); // Wait for a keystroke in the window
     if(k == 't' || k == '1') {
@@ -432,7 +406,7 @@ void showFrame(const Mat& frameToPrint){
 }
 
 void usageRealtime() {
-    printf("Program Options:\n");
+    printf("\nProgram Options:\n");
     printf("While pendulum / graph window is active press one of the symbols below for additional functionalities\n");
     printf("-    t or 1          To toggle between pendulum window (default) and graph of movements.\n");
     printf("-    s or 2          Save current image displayed to file.\n");
