@@ -15,5 +15,8 @@ inline bool fileExist(const std::string &name);
 
 int calibrateCamera();
 
+void usage();
+
+void drawGraph();
 
 #endif //FOUCAULT_GUIFUNCTIONS_H

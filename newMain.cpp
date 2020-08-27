@@ -82,9 +82,15 @@ int main(int argc, char *argv[]) {
     if (argc == 2) {
         if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0) {
             printf("Program Options:\n");
-            printf("Execute the program with none, one or two of the following arguments.\n");
+            printf("Execute the program with none or one of the following arguments.\n");
             printf("-c  or  -calibrate		To calibrate the camera.\n");
+            printf("-g  or  -graph          To display a 2D graph of coordinates from CSV file.\n");
             printf("-h  or  -help			To show this message.\n");
+            exit(0);
+        }
+
+        if (strcmp(argv[1], "-g") == 0 || strcmp(argv[1], "-graph") == 0) {
+            drawGraph();
             exit(0);
         }
 
@@ -365,7 +371,7 @@ void frameComputation(const string& whichThread){
         pointsVector.push(Point2d(pos_X,frameHeight-pos_Y));
         // we start displaying the points
         cv::line(plot_image, Point2d(pos_X,frameHeight-pos_Y), Point2d(pos_X,frameHeight-pos_Y), cv::Scalar(0,0,0), 1);
-        
+
         // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
         if (pointsVector.size()>=graphPoints){
             while(pointsVector.size()>graphPoints){
