@@ -265,12 +265,6 @@ void frameComputation(const string& whichThread){
         requestX = &requestB;
     }
 
-    double new_position_x = -1;
-    double new_position_y = -1;
-    double num =-1;
-    double dem = -1;
-    tuple<double, double> myResult;
-
     // iterating through the queue
     while(true){
         if(!frameQueue_X->empty()){
@@ -288,17 +282,6 @@ void frameComputation(const string& whichThread){
             // myCroppedFrame will be changed as we want (in order to show the tracking rectangle)
             myResult = MatchingMethod(0, 0, whichThread, myFrame);
             tie( position_X, position_Y) = myResult;
-
-            new_position_x = -1;
-            new_position_y = -1;
-
-            num = myMatrix[0][0]*position_X+myMatrix[0][1]*position_Y+myMatrix[0][2];
-            dem = myMatrix[2][0]*position_X+myMatrix[2][1]*position_Y+myMatrix[2][2];
-
-            new_position_x = num/dem;
-            num = myMatrix[1][0]*position_X+myMatrix[1][1]*position_Y+myMatrix[1][2];
-            dem = myMatrix[2][0]*position_X+myMatrix[2][1]*position_Y+myMatrix[2][2];
-            new_position_y = frameHeight- num/dem;
 
             // creating the output tuple of the form (cropped_frame, frame_number, time, position_x, position_y)
             resultQueue_X->push(std::make_tuple(myFrame.clone(), myFrameNumber, ourElapsed, new_position_x, new_position_y));
@@ -342,6 +325,13 @@ void frameComputation(const string& whichThread){
     createTrackbar("Number of graph points",image_window, ptrGraphPoints,1000,checkTrackbar,NULL);
 
 
+    // variables for the perspective
+    double new_position_x;
+    double new_position_y;
+    double num;
+    double dem;
+    tuple<double, double> myResult;
+
     while(true){
 
         // checking if the expected frame number is even or odd (if even we extract from the resultQueue_A, if
@@ -363,8 +353,20 @@ void frameComputation(const string& whichThread){
 
         resultQueue_X->pop();
 
+        // Perspective adjustments
+        new_position_x = -1;
+        new_position_y = -1;
+
+        num = myMatrix[0][0]*pos_X+myMatrix[0][1]*pos_Y+myMatrix[0][2];
+        dem = myMatrix[2][0]*position_X+myMatrix[2][1]*pos_Y+myMatrix[2][2];
+
+        new_position_x = num/dem;
+        num = myMatrix[1][0]*pos_X+myMatrix[1][1]*pos_Y+myMatrix[1][2];
+        dem = myMatrix[2][0]*pos_X+myMatrix[2][1]*pos_Y+myMatrix[2][2];
+        new_position_y = frameHeight- num/dem;
+
         // saving to txt the positions found in MatchingMethod
-        txt_file <<fixed<<elapsed_X <<" "<<pos_X<<" "<<pos_Y<<"\n";
+        txt_file <<fixed<<elapsed_X <<" "<<new_position_x<<" "<<new_position_y<<"\n";
         txt_file.flush();
 
         // we add the new point to the pointsVector to be shown on plot_image Mat
@@ -384,8 +386,7 @@ void frameComputation(const string& whichThread){
             imshow(image_window, plot_image);
         else
             imshow(image_window, extracted_Mat_X);
-
-
+        
         waitKey(1);
         // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
         expectedFrameNumber++;
