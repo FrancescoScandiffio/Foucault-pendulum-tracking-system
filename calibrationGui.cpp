@@ -9,20 +9,57 @@
 using namespace std;
 using namespace cv;
 
+int resultHeight = 600;
+int resultWidth = 600;
+
 Point2f pointArray[4] = {Point(-10,-10), Point(-10,-10), Point(-10,-10), Point(-10,-10)};
 Point2f perspectiveArray[4] = {Point(-10,-10), Point(-10,-10), Point(-10,-10), Point(-10,-10)};
 
-int currentButton = 0;
-bool dragMouse=false;
+Point p5 = Point(0, 0);
+Point p6 = Point(resultWidth, 0);
+Point p7 = Point(0, resultHeight);
+Point p8 = Point(resultWidth, resultHeight);
+
+Point2f v2[] = {p5,p6,p7,p8};
+
+int currentButton = -1;
+bool dragMouse=true;
+
+
+int getLength(int xA, int yA, int xB, int yB){
+    return (int)(sqrt( pow((xA- xB),2)+ pow((yA - yB),2) ));
+
+}
+
+void updateSize(){
+    int a= getLength(pointArray[0].x,pointArray[0].y,pointArray[1].x,pointArray[1].y);
+    int b = getLength(pointArray[0].x,pointArray[0].y,pointArray[2].x,pointArray[2].y);
+    cout<<"Length 1: "<<a<<endl;
+    cout<<"Length 2: "<<b<<endl;
+    double ratio = ((double)(a))/b;
+    resultWidth = 600;
+    resultHeight = resultWidth/ratio;
+    p6 = Point(resultWidth, 0);
+    p7 = Point(0, resultHeight);
+    p8 = Point(resultWidth, resultHeight);
+    String transform = "New View";
+
+    v2[0] = p5;
+    v2[1] = p6;
+    v2[2] = p7;
+    v2[3] = p8;
+    resizeWindow(transform, resultWidth,resultHeight);
+}
 
 void changePointFocus(int status, void* data){
     int buttonId = *((int *) data);
     currentButton = buttonId;
+    dragMouse=false;
 }
 
 void toggleDrag(int status, void* data){
     currentButton = -1;
-    dragMouse = !dragMouse;
+    dragMouse = true;
 }
 
 void mouseCallBack(int event, int x, int y, int flags, void *userdata){
@@ -45,6 +82,8 @@ void savePoints(int status, void* data){
     }
     output.flush();
     output.close();
+
+    updateSize();
 }
 
 inline bool fileExist (const std::string& name) {
@@ -58,6 +97,8 @@ inline bool fileExist (const std::string& name) {
 
 
 int calibrateCamera(){
+
+    bool wasFile=false;
     if(fileExist("calibration.txt")) {
         fstream file("calibration.txt");
         string textLine;
@@ -75,7 +116,7 @@ int calibrateCamera(){
                 posY = stoi(valY);
                 pointArray[currentLine] = Point(posX, posY);
                 currentLine++;
-
+                wasFile=true;
             } catch (...) {
                 cerr << "ERROR: something went wrong while parsing old points from calibration.txt" << endl;
                 cerr<< " Wrong value: x "<<valX<<" Y "<<valY;
@@ -84,6 +125,7 @@ int calibrateCamera(){
                 file.close();
                 fstream newFile("calibration.txt");
                 newFile.close();
+                wasFile=false;
                 break;
             }
         }
@@ -99,7 +141,6 @@ int calibrateCamera(){
     Mat frame;
     video.read(frame);
     String original = "Camera View";
-    String transform = "New View";
     String btn1 = "Top Left point";
     String btn2 = "Top Right point";
     String btn3 = "Bottom Left point";
@@ -107,11 +148,10 @@ int calibrateCamera(){
     String btnDrag = "Move image with drag";
 
     String updateBtn = "Save points";
+    String transform = "New View";
 
     namedWindow(original,WINDOW_GUI_EXPANDED);
     namedWindow(transform,WINDOW_GUI_EXPANDED);
-    resizeWindow(original, 600,600);
-    resizeWindow(transform, 500,500);
     moveWindow(original,70,70);
     moveWindow(transform,690,170);
 
@@ -125,8 +165,8 @@ int calibrateCamera(){
     void* pt3 = &d3;
     void* pt4 = &d4;
 
-    createButton(btnDrag,toggleDrag,NULL,QT_RADIOBOX,0);
-    createButton(btn1,changePointFocus,pt1,QT_RADIOBOX, 1);
+    createButton(btnDrag,toggleDrag,NULL,QT_RADIOBOX,1);
+    createButton(btn1,changePointFocus,pt1,QT_RADIOBOX, 0);
     createButton(btn2,changePointFocus,pt2,QT_RADIOBOX,0);
     createButton(btn3,changePointFocus,pt3,QT_RADIOBOX,0);
     createButton(btn4,changePointFocus,pt4,QT_RADIOBOX,0);
@@ -135,16 +175,19 @@ int calibrateCamera(){
 
     setMouseCallback(original,mouseCallBack,NULL );
 
-    //TODO trackbar per modificare altezza e lunghezza della nuova immagine
-    int resultHeight = 800;
-    int resultWidth = 800;
-
-    Point p5 = Point(0, 0);
-    Point p6 = Point(resultWidth, 0);
-    Point p7 = Point(0, resultHeight);
-    Point p8 = Point(resultWidth, resultHeight);
-
-    Point2f v2[] = {p5,p6,p7,p8};
+    if(wasFile)
+        updateSize();
+    else{
+        p6 = Point(resultWidth, 0);
+        p7 = Point(0, resultHeight);
+        p8 = Point(resultWidth, resultHeight);
+        v2[0] = p5;
+        v2[1] = p6;
+        v2[2] = p7;
+        v2[3] = p8;
+        resizeWindow(original, 600,600);
+        resizeWindow(transform, 500,500);
+    }
 
     Mat matrix;
     Mat result;
@@ -174,6 +217,8 @@ int calibrateCamera(){
     }
     return 0;
 }
+
+
 
 
 int exampleMain(int argc, char *argv[]) {
@@ -207,6 +252,8 @@ int exampleMain(int argc, char *argv[]) {
         cout << "Execute with option '-h' or '-help' (without quotes) to see all the possible configuration" << endl;
 
     }
+
+
 
 
 }
