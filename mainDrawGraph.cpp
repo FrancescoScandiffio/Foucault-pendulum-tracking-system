@@ -59,16 +59,27 @@ void drawGraph(){
 
     Point pt =  Point(50, 50);
     String oldTime = "0.000000";
+    double x;
+    double y;
+    String time;
     // Read data, line by line
     while(std::getline(input_csv, line)){
 
-
         // Create a stringstream of the current line
-        std::stringstream ss(line);
+        std::istringstream ss(line);
+        std::string token;
+        x=99999999;
+        y=99999999;
+        time=" ";
 
-        double x, y;
-        String time;
-        ss >> time >> x >> y;
+        while(std::getline(ss, token, ';')) {
+            if (time==" ")
+                time=token;
+            else if(x==99999999)
+                x=std::stod(token);
+            else
+                y=std::stod(token);
+        }
 
         pointsVector.push(Point2d(x,480-y));
 
@@ -87,7 +98,6 @@ void drawGraph(){
                 pointsVector.pop();
             }
         }
-
 
         bool paused = false;
 

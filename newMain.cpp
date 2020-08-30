@@ -301,7 +301,7 @@ void frameComputation(const string& whichThread){
 
     /// Setting the right name for the file that will store the centers positions
     std::ostringstream oss;
-    oss << "../PendulumCsv/" << ctime(&t) << ".txt";
+    oss << "../PendulumCsv/" << ctime(&t) << ".csv";
     std::string file_name = oss.str();
 
     /// Opening the file where will be saved the coordinates of centers on each frame
@@ -309,7 +309,7 @@ void frameComputation(const string& whichThread){
     if (txt_file.is_open())
         cout << "Opened file "<< file_name<<"\n";
 
-    txt_file <<"time x y\n";
+    txt_file <<"time;x;y\n";
 
     int frameNumber_X=-1;
     double elapsed_X=-1.0;
@@ -366,7 +366,7 @@ void frameComputation(const string& whichThread){
         new_position_y = frameHeight- num/dem;
 
         // saving to txt the positions found in MatchingMethod
-        txt_file <<fixed<<elapsed_X <<" "<<new_position_x<<" "<<new_position_y<<"\n";
+        txt_file <<fixed<<elapsed_X <<";"<<new_position_x<<";"<<new_position_y<<"\n";
         txt_file.flush();
 
         // we add the new point to the pointsVector to be shown on plot_image Mat
