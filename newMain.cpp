@@ -6,6 +6,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <tuple>
+#include <time.h>
 #include "guiFunctions.h"
 #include "utilityFunctions.h"
 
@@ -295,13 +296,19 @@ void frameComputation(const string& whichThread){
 
 [[noreturn]] void writeFile(){
 
+    time_t theTime = time(NULL);
+    struct tm *aTime = localtime(&theTime);
+
     /// Getting the current time
-    chrono::system_clock::time_point p = chrono::system_clock::now();
-    time_t t = chrono::system_clock::to_time_t(p);
+    int day = aTime->tm_mday;
+    int month = aTime->tm_mon + 1; // Month is 0 - 11, add 1 to get a jan-dec 1-12
+    int year = aTime->tm_year + 1900; // Year is # years since 1900
+    int hour = aTime->tm_hour;
+    int min = aTime->tm_min;
 
     /// Setting the right name for the file that will store the centers positions
     std::ostringstream oss;
-    oss << "../PendulumCsv/" << ctime(&t) << ".csv";
+    oss << "../PendulumCsv/" <<year<<"_"<<month<<"_"<<day<<"_"<<hour<<"_"<<min<< ".csv";
     std::string file_name = oss.str();
 
     /// Opening the file where will be saved the coordinates of centers on each frame
