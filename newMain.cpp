@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     typedef std::chrono::duration<double> TimeCast;
 
     /// Load image and template
-    templ = imread( "template2.png", 1 );
+    templ = imread( "template.png", 1 );
 
     ///If on Raspberry:
     // open the default camera
@@ -240,6 +240,7 @@ tuple<double, double> MatchingMethod( int, void*, const string& whichThread, Mat
     /// Show me what you got
     rectangle( croppedFrame, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
     rectangle( *result_X, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
+    circle(croppedFrame,Point(matchLoc.x + templ.cols/2, matchLoc.y + templ.rows/2),0,Scalar( 0, 255, 0 ),5);
 
     // computing and returning the position
     return std::make_tuple(matchLoc.x + templ.cols/2, matchLoc.y + templ.rows/2);
@@ -278,14 +279,19 @@ void frameComputation(const string& whichThread){
                 cerr << "ERROR! blank frame grabbed\n";
                 break;
             }
+            tuple<double, double> myResult;
 
             // we pass in MatchingMethod a view of the Mat myCroppedFrame. When the functions returns the content of
             // myCroppedFrame will be changed as we want (in order to show the tracking rectangle)
             myResult = MatchingMethod(0, 0, whichThread, myFrame);
             tie( position_X, position_Y) = myResult;
 
+            cout<<"DEBUG "<<position_X<<" y: "<<position_Y<<"\n";
+            cout.flush();
+
+
             // creating the output tuple of the form (cropped_frame, frame_number, time, position_x, position_y)
-            resultQueue_X->push(std::make_tuple(myFrame.clone(), myFrameNumber, ourElapsed, new_position_x, new_position_y));
+            resultQueue_X->push(std::make_tuple(myFrame.clone(), myFrameNumber, ourElapsed, position_X, position_Y));
 
             // acquiring the lock and notify the consumer (writeFile) of added element to the queue
             std::lock_guard<std::mutex> lock(requestX->mx);
@@ -308,7 +314,7 @@ void frameComputation(const string& whichThread){
 
     /// Setting the right name for the file that will store the centers positions
     std::ostringstream oss;
-    oss << "../PendulumCsv/" <<year<<"_"<<month<<"_"<<day<<"_"<<hour<<"_"<<min<< ".csv";
+    oss << "../PendulumCsv/" <<year<<"_"<<month<<"_"<<day<<"_"<<hour<<":"<<min<< ".csv";
     std::string file_name = oss.str();
 
     /// Opening the file where will be saved the coordinates of centers on each frame
@@ -337,7 +343,6 @@ void frameComputation(const string& whichThread){
     double new_position_y;
     double num;
     double dem;
-    tuple<double, double> myResult;
 
     while(true){
 
@@ -364,8 +369,9 @@ void frameComputation(const string& whichThread){
         new_position_x = -1;
         new_position_y = -1;
 
+
         num = myMatrix[0][0]*pos_X+myMatrix[0][1]*pos_Y+myMatrix[0][2];
-        dem = myMatrix[2][0]*position_X+myMatrix[2][1]*pos_Y+myMatrix[2][2];
+        dem = myMatrix[2][0]*pos_X+myMatrix[2][1]*pos_Y+myMatrix[2][2];
 
         new_position_x = num/dem;
         num = myMatrix[1][0]*pos_X+myMatrix[1][1]*pos_Y+myMatrix[1][2];
@@ -398,7 +404,4 @@ void frameComputation(const string& whichThread){
         // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
         expectedFrameNumber++;
     }
-    txt_file <<ctime(&t)<<endl;;
-    // closing the txt file
-    txt_file.close();
 }
