@@ -16,7 +16,7 @@ int windowResultWidth = 500;
 int windowResultHeight = 500;
 Point toCalibrate(0,0);
 string calibrationFile = "calibration.txt";
-string templateFile = "testTemplate2.png";
+string templateFile = "template.png";
 
 Point2f calibrationFirstArray[4] = {Point(-10,-10), Point(-10,-10), Point(-10,-10), Point(-10,-10)};
 Point2f calibrationSecondArray[4] = {Point(0,0), Point(windowResultWidth,0),
