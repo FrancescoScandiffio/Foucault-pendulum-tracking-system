@@ -4,22 +4,24 @@
 #include <unistd.h>
 #include <iostream>
 #include <string>
+//even if CLion marks them as unused, the following includes are required:
+#include <fstream>
+#include "guiFunctions.h"
 
 using namespace std;
 using namespace cv;
 
-int resultHeight = 500;
-int resultWidth = 500;
+//Global vars:
+int windowResultWidth = 500;
+int windowResultHeight = 500;
+Point toCalibrate(0,0);
+string calibrationFile = "calibration.txt";
+string templateFile = "testTemplate2.png";
 
 Point2f calibrationFirstArray[4] = {Point(-10,-10), Point(-10,-10), Point(-10,-10), Point(-10,-10)};
-Point2f calibrationSecondArray[4] = {Point(-10,-10), Point(-10,-10), Point(-10,-10), Point(-10,-10)};
-
-Point p5 = Point(0, 0);
-Point p6 = Point(resultWidth, 0);
-Point p7 = Point(0, resultHeight);
-Point p8 = Point(resultWidth, resultHeight);
-
-Point2f v2[] = {p5,p6,p7,p8};
+Point2f calibrationSecondArray[4] = {Point(0,0), Point(windowResultWidth,0),
+                                     Point(0,windowResultHeight),
+                                     Point(windowResultWidth,windowResultHeight)};
 
 int currentButton = -1;
 bool dragMouse=true;
@@ -27,19 +29,14 @@ bool dragMouse=true;
 void updateSize(){
     int ABx = abs(calibrationFirstArray[0].x - calibrationFirstArray[1].x);
     int CDx =  abs(calibrationFirstArray[2].x - calibrationFirstArray[3].x);
-    resultWidth = ABx < CDx ? CDx : ABx;
+    windowResultWidth = ABx < CDx ? CDx : ABx;
     int ACy = abs(calibrationFirstArray[0].y - calibrationFirstArray[2].y);
     int BDy =  abs(calibrationFirstArray[1].y - calibrationFirstArray[3].y);
-    resultHeight = ACy < BDy ? BDy : ACy;
-    p6 = Point(resultWidth, 0);
-    p7 = Point(0, resultHeight);
-    p8 = Point(resultWidth, resultHeight);
-    String transform = "New View";
-    v2[0] = p5;
-    v2[1] = p6;
-    v2[2] = p7;
-    v2[3] = p8;
-    cout<<"PerspectiveWindow now displays a "<<resultWidth<<"x"<<resultHeight<<" frame"<<endl;
+    windowResultHeight = ACy < BDy ? BDy : ACy;
+    calibrationSecondArray[1]= Point(windowResultWidth, 0);
+    calibrationSecondArray[2] = Point(0, windowResultHeight);
+    calibrationSecondArray[3] = Point(windowResultWidth, windowResultHeight);
+    cout<<"\nWarped View now displays a "<<windowResultWidth<<"x"<<windowResultHeight<<" frame"<<endl;
 
 }
 
@@ -56,21 +53,22 @@ void toggleDrag(int status, void* data){
 
 void mouseCallBack(int event, int x, int y, int flags, void *userdata){
     if(event == EVENT_LBUTTONDOWN && !dragMouse) {
-        if(currentButton<0 || currentButton > 3){
-            cerr<<"BUTTON ERROR. CAN'T HANDLE";
+        if (currentButton < 0 || currentButton > 3) {
+            cerr << "BUTTON ERROR. CAN'T HANDLE";
             exit(-3);
+        } else {
+            calibrationFirstArray[currentButton] = Point(x, y);
+            updateSize();
         }
-        else
-            calibrationFirstArray[currentButton] = Point(x,y);
-
     }
 }
 
 void savePoints(int status, void* data){
-    ofstream output("calibration.txt");
+    ofstream output(calibrationFile);
+    cout<<"New points saved: \n"<<endl;
     for(int i=0; i<4; i++) {
         output << calibrationFirstArray[i].x << ";" << calibrationFirstArray[i].y << endl;
-        cout<<"\nPoint "<<i+1<<" X:"<<calibrationFirstArray[i].x<<" Y: "<<calibrationFirstArray[i].y<<endl;
+        cout<< calibrationFirstArray[i].x << ";" << calibrationFirstArray[i].y << endl;
     }
     output.flush();
     output.close();
@@ -87,7 +85,7 @@ inline bool fileExist (const std::string& name) {
     }
 }
 
-void MatchingMethod(Mat img, String window, Mat templ, bool copy)
+Mat calibrationMatching(Mat img, const Mat& templ)
 {
     /// Source image to display
 
@@ -104,34 +102,52 @@ void MatchingMethod(Mat img, String window, Mat templ, bool copy)
     normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
 
     /// Localizing the best match with minMaxLoc
-    double minVal; double maxVal; Point minLoc; Point maxLoc;
+    double minVal;
+    double maxVal;
+    Point minLoc;
+    Point maxLoc;
     Point matchLoc;
-
     minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
 
     /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
     matchLoc = maxLoc;
 
     /// Show me what you got
-    if(copy)
-        img = img.clone();
-    Point p = Point(matchLoc.x+templ.cols/2,matchLoc.y+templ.rows/2 );
+    toCalibrate = Point(matchLoc.x+templ.cols/2,matchLoc.y+templ.rows/2 );
     rectangle( img, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
-    circle(img,p,0,Scalar( 0, 255, 0 ),1);
-    imshow( window, img );
-
-    return;
+    circle(img,toCalibrate,0,Scalar( 0, 255, 0 ),1);
+    return img;
 }
+
+Mat drawPerspectivePoint(Mat img, Mat matrix){
+    double myMatrix[3][3];
+    matrix = getPerspectiveTransform(calibrationFirstArray, calibrationSecondArray);
+    for(int i=0; i<3; i++)
+        for(int j=0; j<3; j++){
+            myMatrix[i][j] = matrix.at<double>(i,j);
+        }
+    double num = myMatrix[0][0]*toCalibrate.x+myMatrix[0][1]*toCalibrate.y+myMatrix[0][2];
+    double dem = myMatrix[2][0]*toCalibrate.x+myMatrix[2][1]*toCalibrate.y+myMatrix[2][2];
+    double new_position_x = num/dem;
+    num = myMatrix[1][0]*toCalibrate.x+myMatrix[1][1]*toCalibrate.y+myMatrix[1][2];
+    dem = myMatrix[2][0]*toCalibrate.x+myMatrix[2][1]*toCalibrate.y+myMatrix[2][2];
+    double new_position_y = num/dem;
+    circle(img,Point(new_position_x,new_position_y),0,Scalar( 0, 255, 0 ),1);
+    return img;
+}
+
+
 
 int calibrateCamera(){
 
     bool wasFile=false;
-    if(fileExist("calibration.txt")) {
-        fstream file("calibration.txt");
+    if(fileExist(calibrationFile)) {
+        fstream file(calibrationFile);
         string textLine;
         int currentLine = 0;
         int posX, posY;
         string valX,valY;
+        cout<<"Loading points from file:"<<endl;
         while (getline(file, textLine) && currentLine<4) {
             try {
                 int dotComma = textLine.find(";");
@@ -145,12 +161,12 @@ int calibrateCamera(){
                 currentLine++;
                 wasFile=true;
             } catch (...) {
-                cerr << "ERROR: something went wrong while parsing old points from calibration.txt" << endl;
+                cerr << "ERROR: something went wrong while parsing old points from "<< calibrationFile << endl;
                 cerr<< " Wrong value: x "<<valX<<" Y "<<valY;
                 cerr.flush();
-                cout << "A new file will be created...\n";
+                cout << "A new file will be created with name "<<calibrationFile<<"\n";
                 file.close();
-                fstream newFile("calibration.txt");
+                fstream newFile(calibrationFile);
                 newFile.close();
                 wasFile=false;
                 break;
@@ -159,10 +175,21 @@ int calibrateCamera(){
     }
     else{
         cout<<"Configuration file calibration.txt not found. A new file will be created...\n"<<endl;
-        fstream newFile("calibration.txt");
+        fstream newFile(calibrationFile);
         newFile.close();
     }
-    Mat templ = imread( "testTemplate2.png", 1 );
+    bool hasTemplate = false;
+    Mat templ;
+    if(fileExist(templateFile)){
+        templ = imread(templateFile, 1);
+        hasTemplate = true;
+    }else{
+        cout<<
+    "Template file with name "<<templateFile<<" not found.\n No template matching will be applied while performing calibration.\n";
+    cout.flush();
+    hasTemplate=false;
+    }
+
     VideoCapture video(0);
     video.set(CAP_PROP_FPS, int(10));
     Mat frame;
@@ -175,8 +202,7 @@ int calibrateCamera(){
     String btnDrag = "Move image with drag";
 
     String updateBtn = "Save points";
-    String transform = "New View";
-    resultHeight = frame.rows;
+    String transform = "Warped View";
 
     namedWindow(original,WINDOW_GUI_EXPANDED);
     namedWindow(transform,WINDOW_GUI_EXPANDED);
@@ -205,45 +231,24 @@ int calibrateCamera(){
 
     if(wasFile)
         updateSize();
-    else{
-        p6 = Point(resultWidth, 0);
-        p7 = Point(0, resultHeight);
-        p8 = Point(resultWidth, resultHeight);
-        v2[0] = p5;
-        v2[1] = p6;
-        v2[2] = p7;
-        v2[3] = p8;
-    }
+
     resizeWindow(original, 600,600);
     resizeWindow(transform, 500,500);
 
-    Mat matrix;
     Mat result;
-    double myMatrix[3][3];
-    matrix = getPerspectiveTransform(calibrationFirstArray, v2);
-    for(int i=0; i<3; i++)
-        for(int j=0; j<3; j++){
-            myMatrix[i][j] = matrix.at<double>(i,j);
-        }
+    Mat matrix;
 
-    int oldx= 388;
-    int oldy = 219;
-    cout<<"Frame height: "<<resultHeight;
-    double num = myMatrix[0][0]*oldx+myMatrix[0][1]*oldy+myMatrix[0][2];
-    double dem = myMatrix[2][0]*oldx+myMatrix[2][1]*oldy+myMatrix[2][2];
-    double new_position_x = num/dem;
-    num = myMatrix[1][0]*oldx+myMatrix[1][1]*oldy+myMatrix[1][2];
-    dem = myMatrix[2][0]*oldx+myMatrix[2][1]*oldy+myMatrix[2][2];
-    double new_position_y = num/dem;
-    cout<<"\n new: "<<new_position_x<<" y: "<<new_position_y;
+
     while(true) {
         video.read(frame);
 
-        matrix = getPerspectiveTransform(calibrationFirstArray, v2);
-        Size dsize = Size(resultWidth, resultHeight);
+        matrix = getPerspectiveTransform(calibrationFirstArray, calibrationSecondArray);
+        Size dsize = Size(windowResultWidth, windowResultHeight);
         warpPerspective(frame, result, matrix, dsize);
-        MatchingMethod(frame,original,templ,false);
-        MatchingMethod(result,transform,templ,true);
+        if(hasTemplate) {
+            frame = calibrationMatching(frame, templ);
+            result = drawPerspectivePoint(result, matrix);
+        }
 
         for(int i=0; i<4; i++){
             if(i==currentButton)
@@ -257,18 +262,11 @@ int calibrateCamera(){
         cv::line(frame, calibrationFirstArray[0], calibrationFirstArray[2], cv::Scalar(0,0,0), 1);
         cv::line(frame, calibrationFirstArray[2], calibrationFirstArray[3], cv::Scalar(0,0,0), 1);
         cv::line(frame, calibrationFirstArray[1], calibrationFirstArray[3], cv::Scalar(0,0,0), 1);
-
-
+        imshow(original, frame);
+        imshow(transform, result);
 
         waitKey(1);
     }
     return 0;
 }
 
-
-
-
-
-int main(int arg, char*argv[]){
-    calibrateCamera();
-}

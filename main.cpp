@@ -1,14 +1,17 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
-#include <fstream>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <tuple>
 #include <time.h>
+#include <iostream>
+#include <string>
 #include "guiFunctions.h"
-#include "utilityFunctions.h"
+//even if CLion marks it as unused, the following include is required:
+#include <fstream>
+
 
 using namespace std;
 using namespace cv;
@@ -17,7 +20,6 @@ bool is_graph_activated=false;
 int graphPoints= 100;
 int* ptrGraphPoints = &graphPoints;
 int expectedFrameNumber=0;
-
 void toggleView(int status, void* data){
     if(status==0)
         is_graph_activated=false;
@@ -35,21 +37,15 @@ void checkTrackbar(int trackPos, void* data) {
 Mat frame;
 Mat templ;
 double myMatrix[3][3];
-int frameHeight;
 
 String image_window = "Window";
 Mat result_A;
 Mat result_B;
 
-
-//for graph of movements
 std::queue<Point2d> pointsVector;
-// image of 640x480 pixels (width x height)
 Mat plot_image;
 
 int match_method=5;
-int max_Trackbar = 5;
-
 
 /// This is how we handle the frames, using two queues for the two threads
 std::queue<std::tuple<Mat, int, double>> frameQueue_A;
@@ -58,7 +54,7 @@ std::queue<std::tuple<Mat, int, double>> frameQueue_B;
 std::queue<tuple<Mat, int, double, double, double>> resultQueue_A;
 std::queue<tuple<Mat, int, double, double, double>> resultQueue_B;
 
-// to make request for extracting from queue the inserted frames to write back to file
+/// to make request for extracting from queue the inserted frames to write back to file
 struct request{
     std::mutex mx;
     std::condition_variable cv;
@@ -69,11 +65,14 @@ request requestB;
 /// Function Headers
 tuple<double, double> MatchingMethod( int, void*, const string&, Mat croppedFrame);
 void frameComputation(const string& whichThread);
-[[noreturn]] void writeFile();
+[[noreturn]] void writeFile(const bool perspectiveCorrection);
 
 
 /** @function main */
 int main(int argc, char *argv[]) {
+
+    string calibrationFile = "calibration.txt";
+    string templateFile = "testTemplate2.png";
 
     if (argc > 2) {
         cerr << "Too many arguments" << endl;
@@ -110,7 +109,14 @@ int main(int argc, char *argv[]) {
     typedef std::chrono::duration<double> TimeCast;
 
     /// Load image and template
-    templ = imread( "../images/template3.png", 1 );
+
+    if(fileExist(templateFile))
+        templ = imread(templateFile, 1);
+    else {
+        cerr << "ERROR. Can't find template file with name: "<< templateFile<<" \n Closing..." << endl;
+        cerr.flush();
+        exit(-1);
+    }
 
     ///If on Raspberry:
     // open the default camera
@@ -121,53 +127,108 @@ int main(int argc, char *argv[]) {
     ///If working locally:
     //VideoCapture capture("../videos/output.mp4");
 
+
     Mat originalFrame;
     capture.read(originalFrame);
-    Point p1 = Point(32, 0);
-    Point p2 = Point(610, 0);
-    Point p3 = Point(23, 478);
-    Point p4 = Point(600, 475);
-    Point p5 = Point(0, 0);
-
     int frameWidth = originalFrame.size().width;
-    frameHeight = originalFrame.size().height;
-
+    int frameHeight = originalFrame.size().height;
     plot_image = Mat::zeros( frameHeight, frameWidth, CV_8UC3);
 
-    Point2f v1[] = {p1,p2,p3,p4};
-    Point p6 = Point(frameWidth, 0);
-    Point p7 = Point(0, frameHeight);
-    Point p8 = Point(frameWidth, frameHeight);
-    Point2f v2[] = {p5,p6,p7,p8};
-    Mat matrix = getPerspectiveTransform(v1, v2);
-    for(int i=0; i<3; i++)
-        for(int j=0; j<3; j++){
-            myMatrix[i][j] = matrix.at<double>(i,j);
-            cout<<myMatrix[i][j]<<"  ";
+
+
+    ///ask if the user wants perspectiveCorrection
+    string answer;
+    do{
+        cout<<"Do you want the program to apply perspective correction? [y/n]"<<endl;
+        getline(cin,answer);
+    }
+    while(answer!="y" && answer!="n");
+
+    bool perspectiveCorrection = false;
+    if(answer=="y") {
+        perspectiveCorrection = true;
+        Point2f inputPoints[4];
+        if(fileExist(calibrationFile)) {
+            fstream file(calibrationFile);
+            string textLine;
+            int currentLine = 0;
+            int posX, posY;
+            string valX,valY;
+            while (getline(file, textLine) && currentLine<4) {
+                try {
+                    int dotComma = textLine.find(";");
+                    valX = textLine.substr(0, dotComma);
+                    valY = textLine.substr(dotComma + 1, textLine.length());
+
+                    posX = stoi(valX);
+                    posY = stoi(valY);
+                    inputPoints[currentLine] = Point(posX, posY);
+                    currentLine++;
+
+                } catch (...) {
+                    cerr << "ERROR: something went wrong while parsing old points from "<<calibrationFile<<endl;
+                    cerr<< " Wrong value: x "<<valX<<" Y "<<valY;
+                    cerr << "\nPlease, retry calibration process";
+                    cout<<"Closing...";
+                    cerr.flush();
+                    file.close();
+                    exit(-2);
+                }
+            }
+            cout<<"Calibration file ok.";
+
         }
+        else{
+            cerr<<"Configuration file "<<calibrationFile<<" not found"<<endl;
+            cerr << "\nPlease, retry calibration process";
+            cout<<"Closing...";
+            cerr.flush();
+            exit(-3);
+        }
+
+        Point p5 = Point(0, 0);
+        int ABx = abs(inputPoints[0].x - inputPoints[1].x);
+        int CDx =  abs(inputPoints[2].x - inputPoints[3].x);
+        int perspectiveWidth = ABx < CDx ? CDx : ABx;
+        int ACy = abs(inputPoints[0].y - inputPoints[2].y);
+        int BDy =  abs(inputPoints[1].y - inputPoints[3].y);
+        int perspectiveHeight = ACy < BDy ? BDy : ACy;
+
+        Point p6 = Point(perspectiveWidth, 0);
+        Point p7 = Point(0, perspectiveHeight);
+        Point p8 = Point(perspectiveWidth, perspectiveHeight);
+        String transform = "New View";
+
+        Point2f outPoints[] = {p5, p6, p7, p8};
+        Mat matrix = getPerspectiveTransform(inputPoints, outPoints);
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                myMatrix[i][j] = matrix.at<double>(i, j);
+    }
+
+    /// starting the two threads that handle the frame computation here
+    std::thread thread1 (frameComputation, "threadA");
+    std::thread thread2 (frameComputation, "threadB");
+    std::thread thread3 (writeFile,perspectiveCorrection);
+    thread1.detach();
+    thread2.detach();
+    thread3.detach();
 
     auto startTime = Time::now();
     auto newTime = Time::now();
     TimeCast elapsed=newTime - startTime;
     bool start = false;
-
     std::tuple<Mat, int, double> frameInfo;
     int frame_number=0;
 
-    // starting the two threads that handle the frame computation here
-    std::thread thread1 (frameComputation, "threadA");
-    std::thread thread2 (frameComputation, "threadB");
-    std::thread thread3 (writeFile);
-    thread1.detach();
-    thread2.detach();
-    thread3.detach();
 
-    // initializing Mat of graph of movements
+
+    /// initializing Mat of graph of movements
     plot_image = cv::Scalar(255, 255, 255);
 
     while(true) {
 
-        // wait for a new frame from camera and store it into 'frame'
+        /// wait for a new frame from camera and store it into 'frame'
         capture.read(frame);
         if (frame.empty()) {
             cerr << "ERROR! blank frame grabbed\n";
@@ -182,10 +243,10 @@ int main(int argc, char *argv[]) {
         }
         elapsed = newTime - startTime;
 
-        // preparing frame info to pass on the proper thread
+        /// preparing frame info to pass on the proper thread
         frameInfo = std::make_tuple(frame.clone(), frame_number, elapsed.count());
 
-        // equally distributing the work on the two queues
+        /// equally distributing the work on the two queues
         if (frame_number % 2 ==0){
             frameQueue_A.push(frameInfo);
         }else{
@@ -198,7 +259,7 @@ int main(int argc, char *argv[]) {
 
     }
 
-    // the camera will be de-initialized automatically in VideoCapture destructor
+    /// the camera will be de-initialized automatically in VideoCapture destructor
     return 0;
 }
 
@@ -242,7 +303,7 @@ tuple<double, double> MatchingMethod( int, void*, const string& whichThread, Mat
     rectangle( *result_X, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 );
     circle(croppedFrame,Point(matchLoc.x + templ.cols/2, matchLoc.y + templ.rows/2),0,Scalar( 0, 255, 0 ),5);
 
-    // computing and returning the position
+    /// computing and returning the position
     return std::make_tuple(matchLoc.x + templ.cols/2, matchLoc.y + templ.rows/2);
 }
 
@@ -285,8 +346,6 @@ void frameComputation(const string& whichThread){
             // myCroppedFrame will be changed as we want (in order to show the tracking rectangle)
             myResult = MatchingMethod(0, 0, whichThread, myFrame);
             tie( position_X, position_Y) = myResult;
-
-            cout<<"DEBUG "<<position_X<<" y: "<<position_Y<<"\n";
             cout.flush();
 
 
@@ -300,7 +359,7 @@ void frameComputation(const string& whichThread){
     }
 }
 
-[[noreturn]] void writeFile(){
+[[noreturn]] void writeFile(const bool perspectiveCorrection){
 
     time_t theTime = time(NULL);
     struct tm *aTime = localtime(&theTime);
@@ -312,17 +371,30 @@ void frameComputation(const string& whichThread){
     int hour = aTime->tm_hour;
     int min = aTime->tm_min;
 
+
     /// Setting the right name for the file that will store the centers positions
+    /// Y means "yes perspective correction"
     std::ostringstream oss;
-    oss << "../PendulumCsv/" <<year<<"_"<<month<<"_"<<day<<"_"<<hour<<":"<<min<< ".csv";
+    std::ostringstream oss_Y;
+    oss << "../PendulumCsv/" <<year<<"_"<<month<<"_"<<day<<"_"<<hour<<"_"<<min<< "_N.csv";
+
+    if(perspectiveCorrection)
+        oss_Y << "../PendulumCsv/" <<year<<"_"<<month<<"_"<<day<<"_"<<hour<<"_"<<min<< "_Y.csv";
+
     std::string file_name = oss.str();
+    std::string file_name_Y = oss_Y.str();
 
     /// Opening the file where will be saved the coordinates of centers on each frame
     ofstream txt_file (file_name);
     if (txt_file.is_open())
         cout << "Opened file "<< file_name<<"\n";
 
+    ofstream txt_file_Y (file_name_Y);
+    if (txt_file_Y.is_open())
+        cout << "Opened file "<< file_name_Y<<"\n";
+
     txt_file <<"time;x;y\n";
+    txt_file_Y <<"time;x;y\n";
 
     int frameNumber_X=-1;
     double elapsed_X=-1.0;
@@ -331,7 +403,6 @@ void frameComputation(const string& whichThread){
     std::queue<tuple<Mat, int, double, double, double>> *resultQueue_X;
     Mat extracted_Mat_X;
     Point2d lastPoint;
-
 
     namedWindow(image_window,WINDOW_GUI_EXPANDED);
     createButton("Show graph", toggleView, NULL, QT_CHECKBOX, 0);
@@ -365,29 +436,29 @@ void frameComputation(const string& whichThread){
 
         resultQueue_X->pop();
 
-        // Perspective adjustments
-        new_position_x = -1;
-        new_position_y = -1;
+        /// Perspective adjustments, only if required by the user
+        if(perspectiveCorrection) {
+            num = myMatrix[0][0] * pos_X + myMatrix[0][1] * pos_Y + myMatrix[0][2];
+            dem = myMatrix[2][0] * pos_X + myMatrix[2][1] * pos_Y + myMatrix[2][2];
 
+            new_position_x = num / dem;
+            num = myMatrix[1][0] * pos_X + myMatrix[1][1] * pos_Y + myMatrix[1][2];
+            dem = myMatrix[2][0] * pos_X + myMatrix[2][1] * pos_Y + myMatrix[2][2];
+            new_position_y = num / dem;
+            txt_file_Y << fixed << elapsed_X << ";" << (int)(new_position_x) << ";" << (int)(new_position_y) << "\n";
+            txt_file_Y.flush();
+        }
+            /// saving to txt the positions found in MatchingMethod
 
-        num = myMatrix[0][0]*pos_X+myMatrix[0][1]*pos_Y+myMatrix[0][2];
-        dem = myMatrix[2][0]*pos_X+myMatrix[2][1]*pos_Y+myMatrix[2][2];
-
-        new_position_x = num/dem;
-        num = myMatrix[1][0]*pos_X+myMatrix[1][1]*pos_Y+myMatrix[1][2];
-        dem = myMatrix[2][0]*pos_X+myMatrix[2][1]*pos_Y+myMatrix[2][2];
-        new_position_y = frameHeight- num/dem;
-
-        // saving to txt the positions found in MatchingMethod
-        txt_file <<fixed<<elapsed_X <<";"<<new_position_x<<";"<<new_position_y<<"\n";
+        txt_file << fixed << elapsed_X << ";" << (int)(pos_X) << ";" << (int)(pos_Y) << "\n";
         txt_file.flush();
 
-        // we add the new point to the pointsVector to be shown on plot_image Mat
-        pointsVector.push(Point2d(pos_X,frameHeight-pos_Y));
-        // we start displaying the points
-        cv::line(plot_image, Point2d(pos_X,frameHeight-pos_Y), Point2d(pos_X,frameHeight-pos_Y), cv::Scalar(0,0,0), 1);
+        /// we add the OLD point to the pointsVector to be shown on plot_image Mat
+        pointsVector.push(Point2d(pos_X,pos_Y));
+        /// we start displaying the points
+        cv::line(plot_image, Point2d(pos_X,pos_Y), Point2d(pos_X,pos_Y), cv::Scalar(0,0,0), 1);
 
-        // we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
+        /// we want to display in the graph no more than 30 points. The 30th point is discarded by coloring it white
         if (pointsVector.size()>=graphPoints){
             while(pointsVector.size()>graphPoints){
                 lastPoint = pointsVector.front();

@@ -4,9 +4,7 @@
 #include <string>
 #include <opencv2/core/types.hpp>
 
-void perspective();
 
-cv::Point2d singlePointPerspective(cv::Point2d);
 
 int changeCoordinatesGeometry();
 

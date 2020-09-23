@@ -25,7 +25,7 @@ void drawGraph(){
 
     usage();
 
-    String path;
+    string path;
     fstream input_csv;
     printf("\n -------------------------------\n");
     printf("Insert the relative coordinate file path:\n");
@@ -44,8 +44,7 @@ void drawGraph(){
     std::queue<Point2d> pointsVector;
 
     /// Create white empty image
-    // image of 640x480 pixels (width x height)
-    Mat plot_image = Mat::zeros( 480, 640, CV_8UC3);
+    Mat plot_image = Mat::zeros( 800, 800, CV_8UC3);
     plot_image = cv::Scalar(255, 255, 255);
 
     // the first line is the header line, we discard it
@@ -135,7 +134,7 @@ void drawGraph(){
                 printf("Insert number of points to be displayed from now on: (default 30)\n");
                 cin>>pointNumber;
                 while(pointNumber<5){
-                    printf("Please insert valid number of points > 5:\n");
+                    printf("Please insert valid number of points > 4:\n");
                     cin>>pointNumber;
                 }
             }else if(k == 'h' || k =='?'){
@@ -146,5 +145,12 @@ void drawGraph(){
         }while(paused);
     }
     // Close file
+    input_csv.close();
+
+    string closing;
+    do{
+        cout<<"\nNo more points to draw. Close the Terminal or write 'q' to exit"<<endl;
+        cin >> closing;
+    }while(closing != "q");
     input_csv.close();
 }
