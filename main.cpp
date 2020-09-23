@@ -72,7 +72,7 @@ void frameComputation(const string& whichThread);
 int main(int argc, char *argv[]) {
 
     string calibrationFile = "calibration.txt";
-    string templateFile = "testTemplate2.png";
+    string templateFile = "template.png";
 
     if (argc > 2) {
         cerr << "Too many arguments" << endl;
