@@ -121,10 +121,18 @@ void drawGraph(){
                 // change the speed at which the points are displayed
                 printf("Insert speed from 0 to 4:\n");
                 cin>>speed;
+                while(!cin){
+                    // user didn't input a number
+                    cin.clear(); // reset failbit
+                    cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); //skip bad input
+                    printf("Please insert a number from 0 to 4:\n");
+                    cin>>pointNumber;
+                }
                 while(speed>4 || speed<0){
                     printf("Please insert valid speed from 0 to 4:\n");
                     cin>>speed;
                 }
+                cout<<"Speed inserted "<<speed<<endl;
             }else if(k == 's' || k == '4'){
                 // saving the current graph to file
                 String name= "graph_"+time+".png";
@@ -133,10 +141,18 @@ void drawGraph(){
             }else if(k == 'c' || k == '5'){
                 printf("Insert number of points to be displayed from now on: (default 30)\n");
                 cin>>pointNumber;
+                while(!cin){
+                    // user didn't input a number
+                    cin.clear(); // reset failbit
+                    cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); //skip bad input
+                    printf("Please insert a number\n");
+                    cin>>pointNumber;
+                }
                 while(pointNumber<5){
                     printf("Please insert valid number of points > 4:\n");
                     cin>>pointNumber;
                 }
+                cout<<"Number of points inserted "<<pointNumber<<endl;
             }else if(k == 'h' || k =='?'){
                 usage();
             }else if(k != -1){
