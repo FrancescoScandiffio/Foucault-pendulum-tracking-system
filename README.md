@@ -2,7 +2,7 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/FraScandiffio/Foucault)
 
 ## About the project
-The purpose of this project is to develop a program capable of tracking a Foucault pendulum with the goal of investigating its behavior. 
+The purpose of this project is to develop a program capable of tracking a Foucault pendulum with the goal of investigating its behavior. Below we describe the main features of the system, the execution modes and the structure of the repository. For more information refer to the contents of the ```\documentation``` folder.
 
 ### Assets deployed
 The hardware consists of:
@@ -113,6 +113,9 @@ It is also made available an offline version of the graph. This is very similar 
 On the upper left corner the time in seconds of the last point inserted. 
 
 ## Repository structure
+- The ```\documentation``` folder contains further information about the project. 
+- The ```\images``` folder contains generic images, along with the template image used for detection. 
+- TODO file rimanenti
 
 ## How to run the program
 
