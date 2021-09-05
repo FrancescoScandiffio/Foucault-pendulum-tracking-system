@@ -82,7 +82,35 @@ In later uses of the application the user can decide to re-position the points, 
 </p>
 
 ### Output file
+The coordinates extracted by the system are stored in a CSV file. Each entry of the file is in this format: ```Time;X;Y``` where:
+- Time is expressed in seconds since the start of the computation. 
+- (X,Y) coordinates in pixel. The axis origin is placed in the top-left corner of the image.
 
+### Graphical interface
+The main goal of the GUI is to allow the user to visualise at a glance the real-time stream from the camera showing a feedback of the detection as we can observe from the figure below. 
+
+<p align="center">
+    <i>Tracking interface:</i>
+</p>
+<p float="left" align="center">
+  <img src="./images/template_interfaccia.png" width="30%"  />
+</p>
+
+From this interface can also be shown a graph of points detected in real-time (up to 1000). As new points come, the older coordinates are deleted from the graph.
+
+It is also made available an offline version of the graph. This is very similar to the online version, but showing coordinates read from a CSV of choice. However, it has some additional features:
+- The appearing of new coordinates can be stopped and played.
+- The speed of visualisations of new points can be changed.
+- The number of points displayed at a time can be changed as well (30 by default) with no upper limit.
+
+<p align="center">
+    <i>Offline graph:</i>
+</p>
+<p float="left" align="center">
+  <img src="./images/graph_offline.png" width="50%"  />
+</p>
+
+On the upper left corner the time in seconds of the last point inserted. 
 
 ## Repository structure
 
