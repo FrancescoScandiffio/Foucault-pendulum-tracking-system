@@ -119,6 +119,24 @@ On the upper left corner the time in seconds of the last point inserted.
     - ```\offlineGraph.cpp``` realizes the tool for drawing the offline graph of points.
 
 ## How to run the program
+In order to use the program it first needs to be compiled. We first move to the directory where it is located, for example:
+
+```cd Desktop/ProjectFolder/release/source```
+
+Then to compile:
+```
+g++ calibration.cpp main.cpp offlineGraph.cpp −o tracciamentoPendolo −I/usr/local/include/opencv4/ −L/usr/local/lib −I/home/pi/Desktop/ProjectFolder/headers −lopencv core −lopencv imgproc −lopencv highgui −lopencv ml −lopencv video −lopencv features2d −lopencv calib3d −lopencv objdetect −lopencv flann −lopencv videoio −lopencv imgcodecs −lpthread
+```
+
+The program is ready to be executed with the simple command ```./tracciamentoPendolo```, or with further optional arguments:
+- The option ```-c``` or ```-calibrate``` to execute the program in calibration mode.
+- The option ```-g``` or ```-graph``` to execute the program in offline mode to draw the graph.
+- The option ```-h``` or ```-help``` to obtain info about the command line arguments available.
+
+If the program is executed with no arguments it will start the tracking. The user will be asked if they want to apply perspective correction or not. To interrupt the execution of the program it is sufficient to type ```Ctrl + c```. 
+
+For further information upon the usage of the program with the other configuration, please refer to the user manual that can be found in the documentation. 
+
 
 ## Authors
 - [Claudia Raffaelli](https://github.com/ClaudiaRaffaelli)
