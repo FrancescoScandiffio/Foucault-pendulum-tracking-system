@@ -27,7 +27,7 @@ Here below are reported some aspects regarding the techniques adopted in the rea
 
 ### Tracking algorithm: template matching
 With this technique the recognition of the center of the pendulum is achieved by searching within each frame captured by the camera, for the group of pixels that is most similar to the content of an another image used as reference, the Template.
-The template used for this project can be found in the folder ```\images```.
+The template used for this project can be found in the folder ```\release\source\```.
 <p align="center">
     <i>Template matching applied to a frame:</i>
 </p>

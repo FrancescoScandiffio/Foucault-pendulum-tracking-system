@@ -7,7 +7,7 @@
 #include <condition_variable>
 #include <tuple>
 #include <time.h>
-#include "guiFunctions.h"
+#include "../release/source/headers/guiFunctions.h"
 #include "utilityFunctions.h"
 
 using namespace std;
