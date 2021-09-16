@@ -6,7 +6,7 @@
 #include <string>
 //even if CLion marks them as unused, the following includes are required:
 #include <fstream>
-#include "guiFunctions.h"
+#include "headers/guiFunctions.h"
 
 using namespace std;
 using namespace cv;

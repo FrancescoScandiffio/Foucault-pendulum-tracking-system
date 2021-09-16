@@ -8,7 +8,7 @@
 #include <time.h>
 #include <iostream>
 #include <string>
-#include "guiFunctions.h"
+#include "headers/guiFunctions.h"
 //even if CLion marks it as unused, the following include is required:
 #include <fstream>
 
