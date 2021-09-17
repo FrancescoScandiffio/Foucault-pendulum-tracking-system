@@ -1,32 +1,32 @@
-# Foucault pendulum tracking software
-![GitHub last commit](https://img.shields.io/github/last-commit/FraScandiffio/Foucault)
+# Foucault pendulum tracking system
+![GitHub last commit](https://img.shields.io/github/last-commit/FrancescoScandiffio/Foucault-pendulum-tracking-system)
 
 ## About the project
-The purpose of this project is to develop a program capable of tracking a Foucault pendulum with the goal of investigating its behavior. Below we describe the main features of the system, the execution modes and the structure of the repository. For more information refer to the content of the ```\documentation``` folder.
+The purpose of this project is to develop a program capable of tracking a Foucault pendulum with the aim of collecting motion data that can be compared with the expected theoretical trend. Below we describe the main features of the system, the execution modes and the structure of the repository. For more information refer to the content of the ```\documentation``` folder.
 
 ### Assets deployed
 The hardware consists of:
-- A Foucault pendulum placed on an electromagnetic coil, so as to make it swing indefinitely.
-- A Raspberry Pi 4.
-- A camera, placed over the pendulum and connected to the Raspberry Pi. The camera frames the pendulum from above, and it is slightly toed in, 
-resulting in a captured scene mildly skewed. This issue will be addressed by applying a perspective correction on the frames. Moreover the camera is of type Rolling Shutter: the frame pixels are not acquired at the same time and this can lead to some distortions. 
-This is especially true when dealing with moving objects within a frame. 
+- A Foucault pendulum.
+- An intermittent electromagnetic coil placed under the center of the base of the pendulum. The magnetic field counteracts the damping of oscillations and keeps the pendulum moving.
+- A <a href="https://www.raspberrypi.org/products/raspberry-pi-4-model-b/specifications/">Raspberry Pi 4</a>.
+- A camera placed over the pendulum and connected to the Raspberry Pi. The camera frames the pendulum from above but not perpendicularly to the base of the structure: the camera is therefore shifted horizontally and tilted. To eliminate the distortion that occurs due to camera tilting, we developed a [remote camera calibration system](#perspective-correction).
+
+
 
 ### Main requirements
 The system needs to comply with the following requirements:
 - Locate the center of the pendulum in real-time for each frame captured by the camera.
-- Accurate extraction of the coordinates.
-- Fast enough to collect real-time data of an adequate number of points for each oscillation.
-- Ability to store the positions collected in a file, taking care of applying the mentioned perspective correction.
-- Have an utility to draw a 2D graph of the pendulum trajectory.
-- A graphical user interface that allows to easily perform all the desired tasks.
+- Collect at least 5 coordinates per second. 
+- Apply a perspective correction strategy.
+- Accurate extraction of the coordinates: maximum error under 10 pixels per axis
+- Store the coordinates in a CSV file.
+- Show a 2D graph of the pendulum trajectory, real-time.
 
 ## Implementation specs
 Here below are reported some aspects regarding the techniques adopted in the realisation of the software.
 
-### Tracking algorithm: template matching
-With this technique the recognition of the center of the pendulum is achieved by searching within each frame captured by the camera, for the group of pixels that is most similar to the content of an another image used as reference, the Template.
-The template used for this project can be found in the folder ```\release\```.
+### Object detection
+The first operation to be performed on the frames extracted from the camera is to locate the pendulum in the scene. This is done using the Template Matching algorithm, in particular the **Zero-normalised cross correlation function** (ZNCC). This algorithm requires an image of the object to be detected, called Template. Since no pre-processing is applied to the images, the object should have the same orientation and size in both Template and source frames: to obtain a good Template it is sufficient to cut a frame obtained from the camera. Attaching a marker to the object in a colour not present in the rest of the image improves accuracy: in our case we used red tape.
 
 <p float="left" align="center">
   <img src="./images/TemplateAndDetection.png" width="35%"  />
@@ -35,16 +35,12 @@ The template used for this project can be found in the folder ```\release\```.
     <i>Fig 1. Template matching applied to a frame.</i>
 </p>
 
-The developed program does not implement any kind of pre-processing on the Source image nor to the Template, such as rotation or size normalization. 
-The object to be identified needs to have the same dimensions and orientation in both Template and Source.
-Also the Template holds, besides the marker, a portion of the near area for better accuracy.
-
 ### Multithreading
-A multi-threading strategy has been applied in order to increase the number of frames analyzed per second, hence the number of object coordinates per second. Since the raspberry Pi-4 has 4 cores, a 4-thread structure. Through experimental tests we have verified that a greater number of threads causes the device to heat up, thermal throttling issues, performance degradation and eventually a device failure.
+A multi-threading strategy has been applied in order to increase the number of frames analyzed per second, hence the number of object coordinates per second. Since the raspberry Pi-4 has 4 cores, a 4-thread structure has been employed. Through experimental tests we have verified that a greater number of threads causes the device to heat up, thermal throttling issues, performance degradation and eventually a device failure.
 The threads are arranged in the following 3-tier processing chain which takes inspiration from the Producer-Consumer pattern:
 1. The Main thread initializes the program and extracts frames from the camera.
-2. Two threads apply the matching algorithm to the frames (one frame per thread) and forward the detected coordinates and the time to the third layer.
-3. One thread rearranges the receied points, append them to a CSV file and displays real-time information about the motion of the tracked object.
+2. Two threads apply the matching algorithm to the frames (one frame per thread) and forward the detected coordinates to the third layer.
+3. One thread sorts the received points by the id of the frames, append them to a CSV file and displays real-time information about the motion of the tracked object.
 
 <p float="left" align="center">
   <img src="./images/threadFlowChart.png" width="50%"  />
@@ -53,6 +49,8 @@ The threads are arranged in the following 3-tier processing chain which takes in
     <i>Fig 2. Multi-threading flowchart of threads.</i>
 </p>
 
+
+**QUI DA FINIRE**
 The threads have been organized as two cascading producer-consumers. The <i>main</i> thread that produces a frame extracted from the camera and that is sent to one of the two threads for processing. 
 Alternately a frame is inserted in one of the two queues consumed by their respective thread for pendulum detection. 
 The result is then sent to a queue waiting for the writing thread to insert it in a CSV document.
