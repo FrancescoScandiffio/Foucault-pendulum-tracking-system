@@ -27,32 +27,30 @@ Here below are reported some aspects regarding the techniques adopted in the rea
 ### Tracking algorithm: template matching
 With this technique the recognition of the center of the pendulum is achieved by searching within each frame captured by the camera, for the group of pixels that is most similar to the content of an another image used as reference, the Template.
 The template used for this project can be found in the folder ```\release\```.
-<p align="center">
-    <i>Template matching applied to a frame:</i>
-</p>
+
 <p float="left" align="center">
   <img src="./images/TemplateAndDetection.png" width="35%"  />
+</p>
+<p align="center">
+    <i>Fig 1. Template matching applied to a frame.</i>
 </p>
 
 The developed program does not implement any kind of pre-processing on the Source image nor to the Template, such as rotation or size normalization. 
 The object to be identified needs to have the same dimensions and orientation in both Template and Source.
-Also the Template holds, besides the marker, a portion of the near area for better performances.
+Also the Template holds, besides the marker, a portion of the near area for better accuracy.
 
 ### Multithreading
-In order to improve the performances of the system - that was capable of handling 5 FPS with the template matching algorithm - has been introduced a multi-threading solution.
-Threads are arranged in a consumer producer pattern. In particular the threads involved are:
-- A main thread that extracts frames from the camera.
-- Two computing threads that consume frames, and produce results.
-- A writer thread that handles the writing to the CSV file.
+A multi-threading strategy has been applied in order to increase the number of frames analyzed per second, hence the number of object coordinates per second. Since the raspberry Pi-4 has 4 cores, a 4-thread structure. Through experimental tests we have verified that a greater number of threads causes the device to heat up, thermal throttling issues, performance degradation and eventually a device failure.
+The threads are arranged in the following 3-tier processing chain which takes inspiration from the Producer-Consumer pattern:
+1. The Main thread initializes the program and extracts frames from the camera.
+2. Two threads apply the matching algorithm to the frames (one frame per thread) and forward the detected coordinates and the time to the third layer.
+3. One thread rearranges the receied points, append them to a CSV file and displays real-time information about the motion of the tracked object.
 
-A greater number of threads on the 4 cores Raspberry Pi would have decreased the performances rather than increase them. 
-The number of FPS the system can handle is 9. In fact, a higher number did not allow the system to process frames fast enough, causing queues to fill up without being consumed fast enough.
-
-<p align="center">
-    <i>Multi-threading flowchart of threads:</i>
-</p>
 <p float="left" align="center">
   <img src="./images/threadFlowChart.png" width="50%"  />
+</p>
+<p align="center">
+    <i>Fig 2. Multi-threading flowchart of threads.</i>
 </p>
 
 The threads have been organized as two cascading producer-consumers. The <i>main</i> thread that produces a frame extracted from the camera and that is sent to one of the two threads for processing. 
