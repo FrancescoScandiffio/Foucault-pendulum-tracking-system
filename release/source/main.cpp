@@ -12,6 +12,7 @@
 //even if CLion marks it as unused, the following include is required:
 #include <fstream>
 
+#define PI 3.14159265
 
 using namespace std;
 using namespace cv;
@@ -415,6 +416,35 @@ void frameComputation(const string& whichThread){
     double num;
     double dem;
 
+    // variables for computing angle
+    float xCenter= 332;
+    float yCenter= 243;
+    // npts is the total number of points
+    int npts=0;
+
+    // last, current and next elements to evaluate. Each array has the form [x, y, radius].
+    String lastTime;
+    double last[3];
+    String currentTime;
+    double current[3];
+    String nextTime;
+    double next[3];
+
+    double* lastMax = nullptr;
+
+    double th3s = 0;
+    double th3s2 = 0;
+
+    // number of maximum
+    int Nmassi = 0;
+    std::vector< double > maximum;
+
+    double sumTheta=0;
+    int innerCountMax = 0;
+    // mean over maxNum of pair of maximum for theta
+    int maxNum=10;
+    float Rgood = 100;
+
     while(true){
 
         // checking if the expected frame number is even or odd (if even we extract from the resultQueue_A, if
@@ -448,10 +478,100 @@ void frameComputation(const string& whichThread){
             txt_file_Y << fixed << elapsed_X << ";" << (int)(new_position_x) << ";" << (int)(new_position_y) << "\n";
             txt_file_Y.flush();
         }
-            /// saving to txt the positions found in MatchingMethod
+        /// saving to txt the positions found in MatchingMethod
 
         txt_file << fixed << elapsed_X << ";" << (int)(pos_X) << ";" << (int)(pos_Y) << "\n";
         txt_file.flush();
+
+        /// computing the angle
+        // - time is the current time
+        // - xx is the x coordinate obtained from (x coord - xCenter)
+        // - yy is the y coordinate obtained from (y coord - yCenter)
+        // - rr is the radius obtained from sqrt(xx^2+yy^2)
+        double xx = pos_X-xCenter;
+        double yy = pos_Y-yCenter;
+        double rr = sqrt(pow(xx, 2) + pow(yy, 2));
+
+        if(npts == 0){
+            nextTime=elapsed_X;
+            next[0]=xx;
+            next[1]=yy;
+            next[2]=rr;
+        }else if(npts==1){
+            currentTime=nextTime;
+            current[0]=next[0];
+            current[1]=next[1];
+            current[2]=next[2];
+            nextTime=elapsed_X;
+            next[0]=xx;
+            next[1]=yy;
+            next[2]=rr;
+        }else{
+            lastTime=currentTime;
+            last[0]=current[0];
+            last[1]=current[1];
+            last[2]=current[2];
+            currentTime=nextTime;
+            current[0]=next[0];
+            current[1]=next[1];
+            current[2]=next[2];
+            nextTime=elapsed_X;
+            next[0]=xx;
+            next[1]=yy;
+            next[2]=rr;
+
+            if ((current[2] > last[2]) && (current[2] >= next[2]) && (current[2] > Rgood)){
+                // found a new maximum
+                Nmassi++;
+                //std::cout << "Max: time " << currentTime << ", xx: " << current[0]<< ", yy: " << current[1] << ", r: " << current[2] <<std::endl;
+
+                // we evaluate the maximums two by two
+                if(lastMax == nullptr){ //checks the size of the array. If the size is zero
+                    lastMax = new double[3];
+                    // this is the first of the couple to evaluate
+                    lastMax[0]=current[0];
+                    lastMax[1]=current[1];
+                    lastMax[2]=current[2];
+                    continue;
+                }
+
+                // use the consecutive maximum coordinates to obtain theta:
+                // arctan((y_current - y_last)/(x_current - x_last))
+
+                double th3now;
+
+                if ((current[0] - lastMax[0])==0){
+                    // making sure that the denominator is not 0, and if so the arctan is 90 degrees
+                    th3now=90;
+                }else{
+                    th3now = atan((current[1] - lastMax[1])/(current[0] - lastMax[0])) *180 / PI; // arctan in degrees
+                }
+                if (th3now < 0){
+                    th3now = th3now + 180;
+                }
+                th3s = th3s + th3now;
+                th3s2 = th3s2 + pow(th3now,2);
+                //std::cout << "Num max: " << Nmassi << ", theta3: "<< th3now <<std::endl;
+
+                if(innerCountMax==maxNum){
+                    sumTheta=sumTheta/maxNum;
+                    std::cout << "theta mediato su " << maxNum<<": " << sumTheta << std::endl;
+                    sumTheta=0;
+                    innerCountMax=0;
+                }else{
+                    sumTheta+=th3now;
+                    innerCountMax++;
+                }
+
+                // save all the theta3 computed
+                maximum.push_back(th3now);
+
+                // we evaluated two max
+                lastMax = nullptr;
+            }
+        }
+        npts++;
+
 
         /// we add the OLD point to the pointsVector to be shown on plot_image Mat
         pointsVector.push(Point2d(pos_X,pos_Y));
