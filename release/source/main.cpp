@@ -255,8 +255,10 @@ int main(int argc, char *argv[]) {
         }
 
         frame_number++;
-        if (frame_number % 100 ==0)
-            cout<<frame_number<<" Elements in FrameA: "<<frameQueue_A.size()<<", elements in FrameB: "<<frameQueue_B.size()<<endl;
+
+        // to print the status of the queues
+        //if (frame_number % 100 ==0)
+        //   cout<<frame_number<<" Elements in FrameA: "<<frameQueue_A.size()<<", elements in FrameB: "<<frameQueue_B.size()<<endl;
 
     }
 
@@ -421,28 +423,21 @@ void frameComputation(const string& whichThread){
     float yCenter= 243;
     // npts is the total number of points
     int npts=0;
-
-    // last, current and next elements to evaluate. Each array has the form [x, y, radius].
-    String lastTime;
-    double last[3];
-    String currentTime;
-    double current[3];
-    String nextTime;
-    double next[3];
-
-    double* lastMax = nullptr;
-
-    double th3s = 0;
-    double th3s2 = 0;
-
     // number of maximum
     int Nmassi = 0;
-    std::vector< double > maximum;
+
+    // last, current and next elements to evaluate. Each array has the form [x, y, radius].
+    double last[3];
+    double current[3];
+    double next[3];
+    double* lastMax = nullptr;
 
     double sumTheta=0;
     int innerCountMax = 0;
     // mean over maxNum of pair of maximum for theta
     int maxNum=10;
+    std::cout<<"Mean of theta over "<<maxNum*2<<" maximum"<<std::endl;
+
     float Rgood = 100;
 
     while(true){
@@ -493,29 +488,23 @@ void frameComputation(const string& whichThread){
         double rr = sqrt(pow(xx, 2) + pow(yy, 2));
 
         if(npts == 0){
-            nextTime=elapsed_X;
             next[0]=xx;
             next[1]=yy;
             next[2]=rr;
         }else if(npts==1){
-            currentTime=nextTime;
             current[0]=next[0];
             current[1]=next[1];
             current[2]=next[2];
-            nextTime=elapsed_X;
             next[0]=xx;
             next[1]=yy;
             next[2]=rr;
         }else{
-            lastTime=currentTime;
             last[0]=current[0];
             last[1]=current[1];
             last[2]=current[2];
-            currentTime=nextTime;
             current[0]=next[0];
             current[1]=next[1];
             current[2]=next[2];
-            nextTime=elapsed_X;
             next[0]=xx;
             next[1]=yy;
             next[2]=rr;
@@ -523,8 +512,6 @@ void frameComputation(const string& whichThread){
             if ((current[2] > last[2]) && (current[2] >= next[2]) && (current[2] > Rgood)){
                 // found a new maximum
                 Nmassi++;
-                //std::cout << "Max: time " << currentTime << ", xx: " << current[0]<< ", yy: " << current[1] << ", r: " << current[2] <<std::endl;
-
                 // we evaluate the maximums two by two
                 if(lastMax == nullptr){ //checks the size of the array. If the size is zero
                     lastMax = new double[3];
@@ -537,41 +524,34 @@ void frameComputation(const string& whichThread){
 
                 // use the consecutive maximum coordinates to obtain theta:
                 // arctan((y_current - y_last)/(x_current - x_last))
-
-                double th3now;
+                double theta;
 
                 if ((current[0] - lastMax[0])==0){
                     // making sure that the denominator is not 0, and if so the arctan is 90 degrees
-                    th3now=90;
+                    theta=90;
                 }else{
-                    th3now = atan((current[1] - lastMax[1])/(current[0] - lastMax[0])) *180 / PI; // arctan in degrees
+                    theta = atan((current[1] - lastMax[1])/(current[0] - lastMax[0])) *180 / PI; // arctan in degrees
                 }
-                if (th3now < 0){
-                    th3now = th3now + 180;
+                if (theta < 0){
+                    theta = theta + 180;
                 }
-                th3s = th3s + th3now;
-                th3s2 = th3s2 + pow(th3now,2);
-                //std::cout << "Num max: " << Nmassi << ", theta3: "<< th3now <<std::endl;
 
+                // theta is shown averaged over maxNum consecutive maxima
                 if(innerCountMax==maxNum){
                     sumTheta=sumTheta/maxNum;
-                    std::cout << "theta mediato su " << maxNum<<": " << sumTheta << std::endl;
+                    std::cout << "Theta: " << sumTheta << std::endl;
                     sumTheta=0;
                     innerCountMax=0;
                 }else{
-                    sumTheta+=th3now;
+                    sumTheta+=theta;
                     innerCountMax++;
                 }
-
-                // save all the theta3 computed
-                maximum.push_back(th3now);
 
                 // we evaluated two max
                 lastMax = nullptr;
             }
         }
         npts++;
-
 
         /// we add the OLD point to the pointsVector to be shown on plot_image Mat
         pointsVector.push(Point2d(pos_X,pos_Y));
