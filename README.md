@@ -2,7 +2,7 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/FrancescoScandiffio/Foucault-pendulum-tracking-system)
 
 ## Abstract
-The purpose of this project is to develop a program capable of tracking a Foucault pendulum with the aim of collecting motion data that can be compared with the expected theoretical trend. Although the design is intended for use with a foucault pendulum, the system is generic enough to be employed to obtain information about the motion of any moving object. The system also features a tool for correcting perspective distortion that can be used without having to physically access the camera to calibrate it.
+The purpose of this project is to develop a program capable of tracking a Foucault pendulum with the aim of collecting motion data that can be compared with the expected theoretical trend. Although the design is intended for use with a Foucault pendulum, the system is generic enough to be employed to obtain information about the motion of any moving object. The system also features a tool for correcting perspective distortion that can be used without having to physically access the camera to calibrate it.
 
 For a detalied description go to [About the project](#about-the-project).
 
@@ -27,7 +27,7 @@ g++ calibration.cpp main.cpp offlineGraph.cpp −o tracciamentoPendolo −I/usr/
 ```
 
 ### Run
-To run the program in tracking mode, simply move to the folder that contains the compiled files and invoke the command ./tracciamentoPendolo
+To run the program in tracking mode, simply move to the folder that contains the compiled files and invoke the command ```./tracciamentoPendolo```.
 The following optional parameters allow you to start the program in a specific mode:
 - ```-c``` or ```-calibrate``` to execute the program in calibration mode.
 - ```-g``` or ```-graph``` to execute the program in offline mode, i.e to draw the graph of the points from a CSV file. After starting, the program will ask for the **relative path** to the CSV file.
