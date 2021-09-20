@@ -145,4 +145,5 @@ Computer Engineering Master Degree @[University of Florence](https://www.unifi.i
 **Footnotes**
 
 <a name="myfootnote1">1</a>. The manual is available only in Italian language. We are currently busy with other work and do not expect to add an English translation anytime soon. However, the report and presentation of the project are in English. These files are also located in the ```documentation``` folder.
+</br>
 <a name="myfootnote2">2</a>. The development of this project began in March 2019, the same month in which the first lockdown began in Italy. The lockdown prevented many activities from taking place normally for many months, including access to the laboratories.
