@@ -136,7 +136,7 @@ When the program is run in offline mode, the interface shows a graph similar to 
 
 ## Authors
 - [Claudia Raffaelli](https://github.com/ClaudiaRaffaelli)
-- [Francesco Scandiffio](https://github.com/FraScandiffio)
+- [Francesco Scandiffio](https://github.com/FrancescoScandiffio)
 
 ##
 Computer Engineering Master Degree @[University of Florence](https://www.unifi.it/changelang-eng.html) - [Laboratory of automatic control (6 cfu)](https://www.unifi.it/p-ins2-2018-502774-0.html)
