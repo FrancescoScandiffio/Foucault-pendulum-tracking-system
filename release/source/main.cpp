@@ -502,6 +502,9 @@ void frameComputation(const string& whichThread){
 
         txt_file << fixed << elapsed_X << ";" << (int)(pos_X) << ";" << (int)(pos_Y) << "\n";
         txt_file.flush();
+        // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
+        expectedFrameNumber++;
+
 
         /// computing the angle
         // - time is the current time
@@ -603,7 +606,5 @@ void frameComputation(const string& whichThread){
             imshow(image_window, extracted_Mat_X);
 
         waitKey(1);
-        // incrementing the expectedFrameNumber because we handled the frame and we can pass to the later one
-        expectedFrameNumber++;
     }
 }
