@@ -368,24 +368,46 @@ void frameComputation(const string& whichThread){
     struct tm *aTime = localtime(&theTime);
 
     /// Getting the current time
-    int day = aTime->tm_mday;
-    int month = aTime->tm_mon + 1; // Month is 0 - 11, add 1 to get a jan-dec 1-12
+    string day = std::to_string(aTime->tm_mday);
+    string month = std::to_string(aTime->tm_mon + 1); // Month is 0 - 11, add 1 to get a jan-dec 1-12
     int year = aTime->tm_year + 1900; // Year is # years since 1900
-    int hour = aTime->tm_hour;
-    int min = aTime->tm_min;
-
+    string hour = std::to_string(aTime->tm_hour);
+    string min = std::to_string(aTime->tm_min);
 
     /// Setting the right name for the file that will store the centers positions
     /// Y means "yes perspective correction"
     std::ostringstream oss;
-    std::ostringstream oss_Y;
-    oss << "../PendulumCsv/" <<year<<"_"<<month<<"_"<<day<<"_"<<hour<<"_"<<min<< "_N.csv";
-
-    if(perspectiveCorrection)
-        oss_Y << "../PendulumCsv/" <<year<<"_"<<month<<"_"<<day<<"_"<<hour<<"_"<<min<< "_Y.csv";
-
-    std::string file_name = oss.str();
-    std::string file_name_Y = oss_Y.str();
+    // adding 0 in front if necessary to always have a name of the form XXXX_XX_XX_XX_XX_N.csv
+    if (month.length()==1){
+        // add a front 0 to the month
+        oss << "../PendulumCsv/" <<year<<"_0"<<month;
+    }else{
+        oss << "../PendulumCsv/" <<year<<"_"<<month;
+    }
+    if(day.length()==1){
+        oss<<"_0"<<day;
+    }else{
+        oss<<"_"<<day;
+    }
+    if(hour.length()==1){
+        oss<<"_0"<<hour;
+    }else{
+        oss<<"_"<<hour;
+    }
+    if(min.length()==1){
+        oss<<"_0"<<min;
+    }else{
+        oss<<"_"<<min;
+    }
+    std::string file_name_Y;
+    std::string file_name;
+    if(perspectiveCorrection){
+        oss<<"_Y.csv";
+        file_name_Y = oss.str();
+    }else{
+        oss<<"_N.csv";
+        file_name = oss.str();
+    }
 
     /// Opening the file where will be saved the coordinates of centers on each frame
     ofstream txt_file (file_name);
@@ -419,8 +441,8 @@ void frameComputation(const string& whichThread){
     double dem;
 
     // variables for computing angle
-    float xCenter= 332;
-    float yCenter= 243;
+    float xCenter= 319.79;
+    float yCenter= 245.00;
     // npts is the total number of points
     int npts=0;
     // number of maximum
@@ -436,7 +458,7 @@ void frameComputation(const string& whichThread){
     int innerCountMax = 0;
     // mean over maxNum of pair of maximum for theta
     int maxNum=10;
-    std::cout<<"Mean of theta over "<<maxNum*2<<" maximum"<<std::endl;
+    //std::cout<<"Mean of theta over "<<maxNum*2<<" maximum"<<std::endl;
 
     float Rgood = 100;
 
