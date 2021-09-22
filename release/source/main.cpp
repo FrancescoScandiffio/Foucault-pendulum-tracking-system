@@ -449,11 +449,8 @@ void frameComputation(const string& whichThread){
     int Nmassi = 0;
 
     // last, current and next elements to evaluate. Each array has the form [x, y, radius].
-    String lastTime;
     double last[3];
-    String currentTime;
     double current[3];
-    String nextTime;
     double next[3];
     double* lastMax = nullptr;
 
@@ -516,29 +513,23 @@ void frameComputation(const string& whichThread){
         double rr = sqrt(pow(xx, 2) + pow(yy, 2));
 
         if(npts == 0){
-            nextTime=elapsed_X;
             next[0]=xx;
             next[1]=yy;
             next[2]=rr;
         }else if(npts==1){
-            currentTime=nextTime;
             current[0]=next[0];
             current[1]=next[1];
             current[2]=next[2];
-            nextTime=elapsed_X;
             next[0]=xx;
             next[1]=yy;
             next[2]=rr;
         }else{
-            lastTime=currentTime;
             last[0]=current[0];
             last[1]=current[1];
             last[2]=current[2];
-            currentTime=nextTime;
             current[0]=next[0];
             current[1]=next[1];
             current[2]=next[2];
-            nextTime=elapsed_X;
             next[0]=xx;
             next[1]=yy;
             next[2]=rr;
@@ -573,7 +564,7 @@ void frameComputation(const string& whichThread){
                 // theta is shown averaged over maxNum consecutive maxima
                 if(innerCountMax==maxNum){
                     sumTheta=sumTheta/maxNum;
-                    std::cout << "Elapsed time: "<< currentTime <<", angle: " << sumTheta << std::endl;
+                    std::cout << "Elapsed time: "<< fixed << elapsed_X <<", angle: " << sumTheta << std::endl;
                     sumTheta=theta;
                     innerCountMax=1;
                 }else{
